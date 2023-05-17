@@ -1,0 +1,26 @@
+input-little:
+Final:
+           
+           
+    xxx    
+           
+  x     x  
+  x     x  
+  x     x  
+           
+    xxx    
+           
+           
+Statistics:
+        Borns..............: 60
+        Survivals..........: 36
+        Loneliness deaths..: 48
+        Overcrowding deaths: 16
+
+input-big:
+...
+Statistics:
+	Borns..............: 1753670
+	Survivals..........: 2651032
+	Loneliness deaths..: 934518
+	Overcrowding deaths: 809422
