@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 /*
  * The Game of Life
  *
@@ -13,147 +15,40 @@
  *
  */
 
-#include <stdlib.h>
-#include "gol.h"
+typedef unsigned char cell_t;
 
-/* Statistics */
-stats_t statistics;
+typedef struct {
+    unsigned int borns;
+    unsigned int overcrowding;
+    unsigned int loneliness;
+    unsigned int survivals;
+} stats_t;
 
-cell_t **allocate_board(int size)
-{
-    cell_t **board = (cell_t **)malloc(sizeof(cell_t *) * size);
-    int i;
-    for (i = 0; i < size; i++)
-        board[i] = (cell_t *)malloc(sizeof(cell_t) * size);
-    
-    statistics.borns = 0;
-    statistics.survivals = 0;
-    statistics.loneliness = 0;
-    statistics.overcrowding = 0;
+typedef struct {
+  int beg;
+  int end;
+  int id;
+  stats_t stats_step;
+  stats_t stats_total;
+} slice;
 
-    return board;
-}
+/* Allocate a GoL board of size = size^3 */
+cell_t ** allocate_board(int size);
 
-void free_board(cell_t **board, int size)
-{
-    int i;
-    for (i = 0; i < size; i++)
-        free(board[i]);
-    free(board);
-}
+/* Deallocate a GoL board of size = size^2 */
+void free_board(cell_t ** board, int size);
 
-int adjacent_to(cell_t **board, int size, int i, int j)
-{
-    int k, l, count = 0;
+/* Return the number of on cells adjacent to the i,j cell */
+int adjacent_to(cell_t ** board, int size, int i, int j);
 
-    int sk = (i > 0) ? i - 1 : i;
-    int ek = (i + 1 < size) ? i + 1 : i;
-    int sl = (j > 0) ? j - 1 : j;
-    int el = (j + 1 < size) ? j + 1 : j;
+/* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
+stats_t play(cell_t ** board, cell_t ** newboard, int size, int begin, int end);
 
-    for (k = sk; k <= ek; k++)
-        for (l = sl; l <= el; l++)
-            count += board[k][l];
-    count -= board[i][j];
+/* Print the GoL board */
+void print_board(cell_t ** board, int size);
 
-    return count;
-}
+/* Print the GoL statistics */
+void print_stats(stats_t stats);
 
-stats_t play(cell_t **board, cell_t **newboard, int size)
-{
-    int i, j, a;
-
-    stats_t stats = {0, 0, 0, 0};
-
-    /* for each cell, apply the rules of Life */
-    for (i = 0; i < size; i++)
-    {
-        for (j = 0; j < size; j++)
-        {
-            a = adjacent_to(board, size, i, j);
-
-            /* if cell is alive */
-            if(board[i][j]) 
-            {
-                /* death: loneliness */
-                if(a < 2) {
-                    newboard[i][j] = 0;
-                    stats.loneliness++;
-                }
-                else
-                {
-                    /* survival */
-                    if(a == 2 || a == 3)
-                    {
-                        newboard[i][j] = board[i][j];
-                        stats.survivals++;
-                    }
-                    else
-                    {
-                        /* death: overcrowding */
-                        if(a > 3)
-                        {
-                            newboard[i][j] = 0;
-                            stats.overcrowding++;
-                        }
-                    }
-                }
-                
-            }
-            else /* if cell is dead */
-            {
-                if(a == 3) /* new born */
-                {
-                    newboard[i][j] = 1;
-                    stats.borns++;
-                }
-                else /* stay unchanged */
-                    newboard[i][j] = board[i][j];
-            }
-        }
-    }
-
-    return stats;
-}
-
-void print_board(cell_t **board, int size)
-{
-    int i, j;
-    /* for each row */
-    for (j = 0; j < size; j++)
-    {
-        /* print each column position... */
-        for (i = 0; i < size; i++)
-            printf("%c", board[i][j] ? 'x' : ' ');
-        /* followed by a carriage return */
-        printf("\n");
-    }
-}
-
-void print_stats(stats_t stats)
-{
-    /* print final statistics */
-    printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
-        stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
-}
-
-void read_file(FILE *f, cell_t **board, int size)
-{
-    char *s = (char *) malloc(size + 10);
-
-    /* read the first new line (it will be ignored) */
-    fgets(s, size + 10, f);
-
-    /* read the life board */
-    for (int j = 0; j < size; j++)
-    {
-        /* get a string */
-        fgets(s, size + 10, f);
-
-        /* copy the string to the life board */
-        for (int i = 0; i < size; i++)
-            board[i][j] = (s[i] == 'x');
-    }
-
-    free(s);
-}
+/* Read a GoL board from a file */
+void read_file(FILE * f, cell_t ** board, int size, char* s, int begin, int end);
