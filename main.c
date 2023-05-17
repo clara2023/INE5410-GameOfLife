@@ -1,6 +1,6 @@
 //#include <bits/pthreadtypes.h>
 #include <pthread.h>
-#include <stdio.h>
+#include <stdio.h> // testando
 #include <stdlib.h>
 #include "gol.h"
 
