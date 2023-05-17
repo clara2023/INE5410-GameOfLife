@@ -11,13 +11,13 @@ int size, steps;
 void* jogar(void *arg) {
     slice param = *(slice *)arg;
     
-    read_file(f, prev, size, param.beg, param.end);
+    read_file(f, param.prev, size, param.beg, param.end);
     fclose(f);    
 
 #ifdef DEBUG
     printf("Initial:\n");
-    print_board(prev, size);
-    print_stats(stats_step);
+    print_board(param.prev, size);
+    print_stats(param.stats_step);
 #endif
 
     cell_t** tmp;
@@ -40,9 +40,6 @@ void* jogar(void *arg) {
 #endif
     }
     
-    free_board(prev, size);
-    free_board(next, size);
-
     pthread_exit(NULL);
 }
 
@@ -104,14 +101,14 @@ int main(int argc, char **argv) {
     }
     for (int i = 0; i < Nthreads; ++i) {
         pthread_join(Th[i], NULL);
-    }
-
-    for (int i = 0; i < Nthreads; ++i) {
         stats_total.borns += param[i].stats_total.borns;
         stats_total.loneliness += param[i].stats_total.loneliness;
         stats_total.overcrowding += param[i].stats_total.overcrowding;
         stats_total.survivals += param[i].stats_total.survivals;
     }
+    
+    free_board(prev, size);
+    free_board(next, size);
     
 #ifdef RESULT
     printf("Final:\n");
