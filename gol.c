@@ -126,7 +126,9 @@ void print_stats(stats_t stats)
         stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
 }
 
-void read_file(FILE *f, cell_t **board, int size, char* s, int begin, int end) {
+void read_file(FILE *f, cell_t **board, int size, int begin, int end) {
+
+    char *s = (char *)malloc(size + 10);
     
     /* read the life board */
     for (int j = begin; j < end; j++) {

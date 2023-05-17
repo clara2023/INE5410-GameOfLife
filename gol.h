@@ -30,6 +30,8 @@ typedef struct {
   int id;
   stats_t stats_step;
   stats_t stats_total;
+  cell_t** prev;
+  cell_t** next;
 } slice;
 
 /* Allocate a GoL board of size = size^3 */
