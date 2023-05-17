@@ -7,7 +7,6 @@
 
 FILE *f;
 int size, steps;
-pthread_mutex_t mutex_step, mutex_total;
 
 void* jogar(void *arg) {
     slice param = *(slice *)arg;
