@@ -1,31 +1,19 @@
 //#include <bits/pthreadtypes.h>
 #include <pthread.h>
-#include <stdio.h> // testando
+#include <sys/types.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include "gol.h"
 
 FILE *f;
-int size, steps, flag0 = 1, flag1 = 1;
-stats_t stats_step = {0, 0, 0, 0};
-stats_t stats_total = {0, 0, 0, 0};
+int size, steps;
+pthread_mutex_t mutex_step, mutex_total;
 
 void* jogar(void *arg) {
     slice param = *(slice *)arg;
-
-    char *s = (char *)malloc(size + 10);
-    cell_t **prev, **next, **tmp;
-
-    /* read the first new line (it will be ignored) */
-    /* evita que várias alocações aconteçam*/
-    if (flag0) {
-        flag0 = 0;
-        fgets(s, size + 10, f);
-        prev = allocate_board(size);
-        next = allocate_board(size);
-    }
-    read_file(f, prev, size, s, param.beg, param.end);
-    fclose(f);
     
+    read_file(f, prev, size, param.beg, param.end);
+    fclose(f);    
 
 #ifdef DEBUG
     printf("Initial:\n");
@@ -33,32 +21,26 @@ void* jogar(void *arg) {
     print_stats(stats_step);
 #endif
 
+    cell_t** tmp;
+
     for (int i = 0; i < steps; i++) {
-        param.stats_step = play(prev, next, size, param.beg, param.end);
+        param.stats_step = play(param.prev, param.next, size, param.beg, param.end);
         
         param.stats_total.borns += param.stats_step.borns;
         param.stats_total.survivals += param.stats_step.survivals;
         param.stats_total.loneliness += param.stats_step.loneliness;
         param.stats_total.overcrowding += param.stats_step.overcrowding;
 
+        tmp = param.next;
+        param.next = param.prev;
+        param.prev = tmp;
 #ifdef DEBUG
         printf("Step %d ----------\n", i + 1);
-        print_board(next, size);
+        print_board(tmp, size);
         print_stats(param.stats_step);
 #endif
-        tmp = next;
-        next = prev;
-        prev = tmp;
     }
-
     
-    
-#ifdef RESULT
-    printf("Final:\n");
-    print_board(prev, size);
-    print_stats(param.stats_total);
-#endif
-
     free_board(prev, size);
     free_board(next, size);
 
@@ -80,14 +62,27 @@ int main(int argc, char **argv) {
     int Nthreads = atoi(argv[2]);
 
     fscanf(f, "%d %d", &size, &steps);
+
+    /* read the first new line (it will be ignored) */
+    char *s = (char *)malloc(size + 10);
+    fgets(s, size + 10, f);
+    free(s);
+
+    cell_t **prev, **next;
+    prev = allocate_board(size);
+    next = allocate_board(size);
     
+    stats_t stats_step = {0, 0, 0, 0};
+    stats_t stats_total = {0, 0, 0, 0};
+
     pthread_t Th[Nthreads];
     slice param[Nthreads];
+    
     int aux = size / Nthreads;
     if (size % Nthreads) {
         aux++;
     }
-    
+     
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
 
@@ -102,10 +97,27 @@ int main(int argc, char **argv) {
 
         param[i].stats_step = stats_step;
         param[i].stats_total = stats_total;
+
+        param[i].prev = prev;
+        param[i].next = next;
+
         pthread_create(&Th[i], NULL, jogar, (void *)&param[i]);
     }
     for (int i = 0; i < Nthreads; ++i) {
         pthread_join(Th[i], NULL);
     }
+
+    for (int i = 0; i < Nthreads; ++i) {
+        stats_total.borns += param[i].stats_total.borns;
+        stats_total.loneliness += param[i].stats_total.loneliness;
+        stats_total.overcrowding += param[i].stats_total.overcrowding;
+        stats_total.survivals += param[i].stats_total.survivals;
+    }
+    
+#ifdef RESULT
+    printf("Final:\n");
+    print_board(prev, size);
+    print_stats(param.stats_total);
+#endif
     return 0;
 }
