@@ -24,3 +24,4 @@ Statistics:
 	Survivals..........: 2651032
 	Loneliness deaths..: 934518
 	Overcrowding deaths: 809422
+
