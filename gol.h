@@ -53,4 +53,4 @@ void print_board(cell_t ** board, int size);
 void print_stats(stats_t stats);
 
 /* Read a GoL board from a file */
-void read_file(FILE * f, cell_t ** board, int size, char* s, int begin, int end);
+void read_file(FILE * f, cell_t ** board, int size, int begin, int end);

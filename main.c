@@ -9,34 +9,33 @@ FILE *f;
 int size, steps;
 
 void* jogar(void *arg) {
-    slice param = *(slice *)arg;
+    slice *param = (slice *)arg;
     
-    read_file(f, param.prev, size, param.beg, param.end);
-    fclose(f);    
+    read_file(f, param->prev, size, param->beg, param->end);
 
 #ifdef DEBUG
     printf("Initial:\n");
-    print_board(param.prev, size);
-    print_stats(param.stats_step);
+    print_board(param->prev, size);
+    print_stats(param->stats_step);
 #endif
-
     cell_t** tmp;
 
     for (int i = 0; i < steps; i++) {
-        param.stats_step = play(param.prev, param.next, size, param.beg, param.end);
+        param->stats_step = play(param->prev, param->next, size, param->beg, param->end);
         
-        param.stats_total.borns += param.stats_step.borns;
-        param.stats_total.survivals += param.stats_step.survivals;
-        param.stats_total.loneliness += param.stats_step.loneliness;
-        param.stats_total.overcrowding += param.stats_step.overcrowding;
+        param->stats_total.borns += param->stats_step.borns;
+        param->stats_total.survivals += param->stats_step.survivals;
+        param->stats_total.loneliness += param->stats_step.loneliness;
+        param->stats_total.overcrowding += param->stats_step.overcrowding;
 
-        tmp = param.next;
-        param.next = param.prev;
-        param.prev = tmp;
+        tmp = param->next;
+        param->next = param->prev;
+        param->prev = tmp;
+
 #ifdef DEBUG
         printf("Step %d ----------\n", i + 1);
-        print_board(tmp, size);
-        print_stats(param.stats_step);
+        print_board(prev, size);
+        print_stats(param->stats_step);
 #endif
     }
     
@@ -71,13 +70,16 @@ int main(int argc, char **argv) {
     stats_t stats_step = {0, 0, 0, 0};
     stats_t stats_total = {0, 0, 0, 0};
 
-    pthread_t Th[Nthreads];
-    slice param[Nthreads];
-    
     int aux = size / Nthreads;
-    if (size % Nthreads) {
+    if (Nthreads >= size) {
+        Nthreads = size;
+        aux = 1;
+    } else if (size % Nthreads) {
         aux++;
     }
+
+    pthread_t Th[Nthreads];
+    slice param[Nthreads];
      
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
@@ -85,8 +87,7 @@ int main(int argc, char **argv) {
         param[i].beg = aux*i;
         param[i].end = aux*(i + 1);
         if (param[i].beg >= size) {
-            param[i].beg = size;
-            param[i].end = size;
+            param[i].beg = param[i].end = size;
         } else if (param[i].end > size) {
             param[i].end = size;
         }
@@ -106,14 +107,15 @@ int main(int argc, char **argv) {
         stats_total.overcrowding += param[i].stats_total.overcrowding;
         stats_total.survivals += param[i].stats_total.survivals;
     }
-    
-    free_board(prev, size);
-    free_board(next, size);
+    fclose(f);
     
 #ifdef RESULT
     printf("Final:\n");
     print_board(prev, size);
-    print_stats(param.stats_total);
+    print_stats(stats_total);
 #endif
+    
+    free_board(prev, size);
+    free_board(next, size);
     return 0;
 }
