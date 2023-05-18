@@ -16,20 +16,12 @@
 #include <stdlib.h>
 #include "gol.h"
 
-/* Statistics */
-stats_t statistics;
-
 cell_t **allocate_board(int size)
 {
     cell_t **board = (cell_t **)malloc(sizeof(cell_t *) * size);
     int i;
     for (i = 0; i < size; i++)
         board[i] = (cell_t *)malloc(sizeof(cell_t) * size);
-    
-    statistics.borns = 0;
-    statistics.survivals = 0;
-    statistics.loneliness = 0;
-    statistics.overcrowding = 0;
 
     return board;
 }
@@ -127,7 +119,7 @@ void print_stats(stats_t stats)
 }
 
 void read_file(FILE *f, cell_t **board, int size, int begin, int end) {
-
+    
     char *s = (char *)malloc(size + 10);
     
     /* read the life board */
