@@ -1,4 +1,6 @@
+#include <bits/pthreadtypes.h>
 #include <stdio.h>
+#include <semaphore.h>
 
 /*
  * The Game of Life
@@ -24,10 +26,18 @@ typedef struct {
     unsigned int survivals;
 } stats_t;
 
+// parametros das threads
 typedef struct {
+  // para evitar duplicação
+  int id;
+  // paralelismo de fato
   int beg;
   int end;
-  int id;
+  // evitar condições
+  // de corrida
+  sem_t semI;
+  sem_t semD;
+  // leitura dos tabuleiros
   stats_t stats_step;
   stats_t stats_total;
   cell_t** prev;
@@ -44,6 +54,7 @@ void free_board(cell_t ** board, int size);
 int adjacent_to(cell_t ** board, int size, int i, int j);
 
 /* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
+// alterada com os sices
 stats_t play(cell_t ** board, cell_t ** newboard, int size, int begin, int end);
 
 /* Print the GoL board */
@@ -53,4 +64,5 @@ void print_board(cell_t ** board, int size);
 void print_stats(stats_t stats);
 
 /* Read a GoL board from a file */
+// alterada com os slices
 void read_file(FILE * f, cell_t ** board, int size, int begin, int end);
