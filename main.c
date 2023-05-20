@@ -24,10 +24,9 @@ sem_t sem0, sem1;
 // retirada da main
 void* jogar(void *arg) {
     slice *param = (slice *)arg;
-
     // leitura do arquivo é paralelizada também
-    read_file(f, param->prev, size, param->beg, param->end);
-
+    read_file(f, param->prev, size,
+              param->beg, param->end);
 #ifdef DEBUG
     // ---- só a thread 0
     if (!param->id) {
@@ -41,7 +40,9 @@ void* jogar(void *arg) {
     for (int i = 0; i < steps; i++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
-        param->stats_step = play(param->prev, param->next, size, param->beg, param->end);
+        param->stats_step = play(param->prev, param->next,
+                                 size, param->beg, param->end);
+        printf("Thread %d jogou %d rodada(s)\n", param->id, i+1);
         // cada thread também tem suas próprias
         // estatísticas totais e por step
         param->stats_total.borns += param->stats_step.borns;
@@ -64,6 +65,7 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
+        printf("Thread %d entrou na região crítica\n", param->id);
         // serve como um wait, para que as threads
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
@@ -71,18 +73,22 @@ void* jogar(void *arg) {
         if (!FLAG_S) {
           // a última thread a chegar é a única
           // que libera o próprio caminho
+            printf("Thread %d chegou por último\n", param->id);
             sem_post(&(param->semI));
             FLAG_S = Nthreads;
         }
         pthread_mutex_unlock(&mutex0);
 
         // trava todas as threads até a última
+        printf("Thread %d vai travar\n", param->id);
         sem_wait(&(param->semI));
+        printf("Thread %d foi liberada\n", param->id);
         tmp = param->next;
         param->next = param->prev;
         param->prev = tmp;
         // cada thread libera a vizinha
         sem_post(&(param->semD));
+        printf("Thread %d liberou %d\n", param->id, (param->id+1)%Nthreads);
 
 #ifdef DEBUG
     // só a thread 0
@@ -100,13 +106,15 @@ void* jogar(void *arg) {
 int main(int argc, char **argv) {
     
     if (argc != 3) {
-        printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n\n", argv[0]);
-        return 0;
+printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n\n",
+        argv[0]);
+        return 1;
     }
 
     if ((f = fopen(argv[1], "r")) == NULL) {
-        printf("ERRO! O arquivo de tabuleiro '%s' não existe!\n\n", argv[1]);
-        return 0;
+        printf("ERRO! O arquivo de tabuleiro '%s' não existe!\n\n",
+               argv[1]);
+        return 1;
     }
 
     Nthreads = atoi(argv[2]);
@@ -124,7 +132,11 @@ int main(int argc, char **argv) {
     prev = allocate_board(size);
     next = allocate_board(size);
     // variável para o resultado final
-    stats_t stats_total = {0, 0, 0, 0};
+    stats_t stats_total = {
+      0,
+      0,
+      0,
+      0};
 
     // para dividir o tabuleiro
     // entre as threads
@@ -170,18 +182,21 @@ int main(int argc, char **argv) {
         param[i].stats_step = stats_total;
         param[i].stats_total = stats_total;
 
-        // os quadros que manoipularão
+        // os quadros que manipularão
         param[i].prev = prev;
         param[i].next = next;
+
+        param[i].semI = semaforo[i];
         // todas menos a última inicializam o semaforo
         // da vizinha, porque o semaforo 0 já o foi
-        if ((i + 1) % Nthreads) {
-            sem_init(&semaforo[(i + 1) % Nthreads], 0, 0);
+        if (i + 1 < Nthreads) {
+            sem_init(&semaforo[i + 1], 0, 0);
         }
-        param[i].semI = semaforo[i];
         param[i].semD = semaforo[(i + 1) % Nthreads];
 
-        pthread_create(&Th[i], NULL, jogar, (void *)&param[i]);
+        pthread_create(&Th[i], NULL,
+                       jogar,
+                       (void *)&param[i]);
     }
     // impedindo a thread main de continuar
     // até as trabalhadoras terminares
