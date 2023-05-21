@@ -13,11 +13,10 @@ int size, steps, Nthreads;
 #ifdef DEBUG
     stats_t stats_step = {0, 0, 0, 0};
     pthread_mutex_t mutexDEBUG;
-    pthread_mutex_init(&mutexDEBUG, NULL);
 #endif
 // controle de concorrência
 int FLAG_S;
-pthread_mutex_t mutex0, mutexDEBUG;
+pthread_mutex_t mutex0;
 sem_t sem0, sem1;
 
 // Função que as threads executam,
@@ -121,6 +120,9 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
     // recebe os parâmetros size e steps do arquivo input
     fscanf(f, "%d %d", &size, &steps);
+#ifdef DEBUG
+    pthread_mutex_init(&mutexDEBUG, NULL);
+#endif
 
     /* read the first new line (it will be ignored) */
     char *s = (char *)malloc(size + 10);
