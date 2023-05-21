@@ -53,14 +53,19 @@ int adjacent_to(cell_t **board, int size, int i, int j) {
 stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
     int i, j, a;
 
-    stats_t stats = {0, 0, 0, 0};
+    stats_t stats = {
+      0,
+      0,
+      0,
+      0
+    };
 
     /* for each cell, apply the rules of Life */
-    for (i = 0; i < size; i++) {
+    for (i = begin; i < end; i++) {
         // só um dos for's é dividido,
         // caso contrário haveriam
         // regiões não varridas
-        for (j = begin; j < end; j++) {
+        for (j = 0; j < size; j++) {
             a = adjacent_to(board, size, i, j);
 
             /* if cell is alive */
@@ -69,22 +74,17 @@ stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
                 if(a < 2) {
                     newboard[i][j] = 0;
                     stats.loneliness++;
+                } else if (a > 3) {
+                    /* death: overcrowding */
+                    newboard[i][j] = 0;
+                    stats.overcrowding++;
                 } else {
                     /* survival */
-                    if(a == 2 || a == 3) {
-                        newboard[i][j] = board[i][j];
-                        stats.survivals++;
-                    } else {
-                        /* death: overcrowding */
-                        if(a > 3)
-                        {
-                            newboard[i][j] = 0;
-                            stats.overcrowding++;
-                        }
+                    newboard[i][j] = board[i][j];
+                    stats.survivals++;
                     }
-                }
-            }
-            else { /* if cell is dead */
+            } else {
+                /* if cell is dead */
                 if(a == 3) { /* new born */
                     newboard[i][j] = 1;
                     stats.borns++;
@@ -94,15 +94,13 @@ stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
             }
         }
     }
-
     return stats;
 }
 
 void print_board(cell_t **board, int size) {
     int i, j;
     /* for each row */
-    for (j = 0; j < size; j++)
-    {
+    for (j = 0; j < size; j++) {
         /* print each column position... */
         for (i = 0; i < size; i++)
             printf("%c", board[i][j] ? 'x' : ' ');
@@ -124,14 +122,14 @@ void read_file(FILE *f, cell_t **board, int size) {
     fgets(s, size + 10, f);
 
     /* read the life board */
-    for (int j = 0; j < size; j++)
-    {
+    for (int j = 0; j < size; j++) {
         /* get a string */
         fgets(s, size + 10, f);
 
         /* copy the string to the life board */
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < size; i++) {
             board[i][j] = (s[i] == 'x');
+        }
     }
 
     free(s);
