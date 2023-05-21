@@ -29,14 +29,12 @@ typedef struct {
 // parametros das threads
 typedef struct {
   // para evitar duplicação
+  // e condições de corrida
   int id;
+  int vizinha;
   // paralelismo de fato
   int beg;
   int end;
-  // evitar condições
-  // de corrida
-  sem_t semI;
-  sem_t semD;
   // leitura dos tabuleiros
   stats_t stats_step;
   stats_t stats_total;
