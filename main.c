@@ -49,17 +49,17 @@ void* jogar(void *arg) {
         param->stats_total.loneliness += param->stats_step.loneliness;
         param->stats_total.overcrowding += param->stats_step.overcrowding;
 
-#ifdef DEBUG
-    // -------caso se deseje ver o passo a passo,
-    // -------a variável stats_step receberão os valores
-    // -------de cada thread
-    pthread_mutex_lock(&mutexDEBUG);
-    stats_step.borns += param->stats_step.borns;
-    stats_step.survivals += param->stats_step.survivals;
-    stats_step.loneliness += param->stats_step.loneliness;
-    stats_step.overcrowding += param->stats_step.overcrowding;
-    pthread_mutex_unlock(&mutexDEBUG);
-#endif
+        #ifdef DEBUG
+            // -------caso se deseje ver o passo a passo,
+            // -------a variável stats_step receberão os valores
+            // -------de cada thread
+            pthread_mutex_lock(&mutexDEBUG);
+            stats_step.borns += param->stats_step.borns;
+            stats_step.survivals += param->stats_step.survivals;
+            stats_step.loneliness += param->stats_step.loneliness;
+            stats_step.overcrowding += param->stats_step.overcrowding;
+            pthread_mutex_unlock(&mutexDEBUG);
+        #endif
         
         // alterando variáveis globais
         // em uma região de exclusão mútua
@@ -89,14 +89,18 @@ void* jogar(void *arg) {
         sem_post(&(param->semD));
         printf("Thread %d liberou %d\n", param->id, (param->id+1)%Nthreads);
 
-#ifdef DEBUG
-    // só a thread 0
-    if (!param->id) {
-        printf("Step %d ----------\n", i + 1);
-        print_board(param->prev, size);
-        print_stats(stats_step);
-        }
-#endif
+        #ifdef DEBUG
+            // só a thread 0
+            if (!param->id) {
+                printf("Step %d ----------\n", i + 1);
+                print_board(param->prev, size);
+                print_stats(stats_step);
+                stats_step.borns = 0;
+                stats_step.survivals = 0;
+                stats_step.loneliness = 0;
+                stats_step.overcrowding = 0;
+                }
+        #endif
     }
     
     pthread_exit(NULL);
