@@ -31,7 +31,6 @@ typedef struct {
   // para evitar duplicação
   // e condições de corrida
   int id;
-  int vizinha;
   // paralelismo de fato
   int beg;
   int end;

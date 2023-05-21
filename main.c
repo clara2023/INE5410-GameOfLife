@@ -56,6 +56,9 @@ void* jogar(void *arg) {
             stats_step.overcrowding += param->stats_step.overcrowding;
             pthread_mutex_unlock(&mutexDEBUG);
         #endif
+        tmp = param->next;
+        param->next = param->prev;
+        param->prev = tmp;
         
         // alterando variáveis globais
         // em uma região de exclusão mútua
@@ -64,21 +67,18 @@ void* jogar(void *arg) {
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
         FLAG_S--;
+
         if (!FLAG_S) {
-          // a última thread a chegar é a única
-          // que libera o próprio caminho
-            sem_post(&(semaforo[param->id]));
+            // a última thread a chegar
+            // libera as outras
             FLAG_S = Nthreads;
+            for (int t = 0; t < Nthreads; t++) {
+                sem_post(&semaforo[t]);
+            }
         }
         pthread_mutex_unlock(&mutex0);
-
         // trava todas as threads até a última
         sem_wait(&(semaforo[param->id]));
-        tmp = param->next;
-        param->next = param->prev;
-        param->prev = tmp;
-        // cada thread libera a vizinha
-        sem_post(&(semaforo[param->vizinha]));
 
         #ifdef DEBUG
             // só a thread 0
@@ -123,7 +123,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     cell_t **prev, **next;
     prev = allocate_board(size);
     read_file(f, prev, size);
-    
+
     next = allocate_board(size);
     // variável para o resultado final
     stats_t stats_total = {
@@ -164,7 +164,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
      
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
-        param[i].vizinha = (i+1)%Nthreads;
 
         // divisão dos slices
         param[i].beg = aux*i;
@@ -183,7 +182,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
         // todas menos a última inicializam o semaforo
         // da vizinha, porque o semaforo 0 já o foi
-        if (param[i].vizinha) {
+        if (i+1 < Nthreads) {
             sem_init(&semaforo[i + 1], 0, 0);
         }
 
