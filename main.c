@@ -157,7 +157,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     FLAG_S = Nthreads;
     semaforo = (sem_t*)malloc(sizeof(sem_t)*Nthreads);
     // para evitar dupla inicialização
-    sem_init(&semaforo[0], 0, 0);
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
@@ -180,11 +179,9 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         param[i].prev = prev;
         param[i].next = next;
 
-        // todas menos a última inicializam o semaforo
-        // da vizinha, porque o semaforo 0 já o foi
-        if (i+1 < Nthreads) {
-            sem_init(&semaforo[i + 1], 0, 0);
-        }
+        // cada thread inicializando
+        // o próprio semáforo
+        sem_init(&semaforo[i], 0, 0);
 
         pthread_create(&Th[i], NULL,
                        jogar,
