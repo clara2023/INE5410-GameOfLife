@@ -17,7 +17,7 @@ int size, steps, Nthreads;
 // controle de concorrência
 int FLAG_S;
 pthread_mutex_t mutex0;
-sem_t sem0, sem1;
+sem_t *semaforo;
 
 // Função que as threads executam,
 // retirada da main
@@ -41,7 +41,6 @@ void* jogar(void *arg) {
         // recebendo as próprias estatísticas
         param->stats_step = play(param->prev, param->next,
                                  size, param->beg, param->end);
-        printf("Thread %d jogou %d rodada(s)\n", param->id, i+1);
         // cada thread também tem suas próprias
         // estatísticas totais e por step
         param->stats_total.borns += param->stats_step.borns;
@@ -64,7 +63,6 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
-        printf("Thread %d entrou na região crítica\n", param->id);
         // serve como um wait, para que as threads
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
@@ -72,22 +70,18 @@ void* jogar(void *arg) {
         if (!FLAG_S) {
           // a última thread a chegar é a única
           // que libera o próprio caminho
-            printf("Thread %d chegou por último\n", param->id);
-            sem_post(&(param->semI));
+            sem_post(&(semaforo[param->id]));
             FLAG_S = Nthreads;
         }
         pthread_mutex_unlock(&mutex0);
 
         // trava todas as threads até a última
-        printf("Thread %d vai travar\n", param->id);
-        sem_wait(&(param->semI));
-        printf("Thread %d foi liberada\n", param->id);
+        sem_wait(&(semaforo[param->id]));
         tmp = param->next;
         param->next = param->prev;
         param->prev = tmp;
         // cada thread libera a vizinha
-        sem_post(&(param->semD));
-        printf("Thread %d liberou %d\n", param->id, (param->id+1)%Nthreads);
+        sem_post(&(semaforo[param->vizinha]));
 
         #ifdef DEBUG
             // só a thread 0
@@ -167,7 +161,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
     FLAG_S = Nthreads;
-    sem_t semaforo[Nthreads];
+    semaforo = (sem_t*)malloc(sizeof(sem_t)*Nthreads);
     // para evitar dupla inicialização
     sem_init(&semaforo[0], 0, 0);
 
@@ -176,6 +170,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
      
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
+        param[i].vizinha = (i+1)%Nthreads;
 
         // divisão dos slices
         param[i].beg = aux*i;
@@ -192,13 +187,11 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         param[i].prev = prev;
         param[i].next = next;
 
-        param[i].semI = semaforo[i];
         // todas menos a última inicializam o semaforo
         // da vizinha, porque o semaforo 0 já o foi
-        if (i + 1 < Nthreads) {
+        if (param[i].vizinha) {
             sem_init(&semaforo[i + 1], 0, 0);
         }
-        param[i].semD = semaforo[(i + 1) % Nthreads];
 
         pthread_create(&Th[i], NULL,
                        jogar,
@@ -217,9 +210,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     pthread_mutex_destroy(&mutex0);
     // usa outro for para garantir que
     // não interfira com a execução
-    for (int i = 0; i < Nthreads; ++i) {
-        sem_destroy( &semaforo[i]);
-    }
+    free(semaforo);
     // na versão paralela,  o arquivo
     // fica aberto durante o jogo todo
     fclose(f);
