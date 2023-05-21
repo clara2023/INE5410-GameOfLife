@@ -23,9 +23,6 @@ sem_t *semaforo;
 // retirada da main
 void* jogar(void *arg) {
     slice *param = (slice *)arg;
-    // leitura do arquivo é paralelizada também
-    read_file(f, param->prev, size,
-              param->beg, param->end);
 #ifdef DEBUG
     // ---- só a thread 0
     if (!param->id) {
@@ -120,16 +117,13 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     fscanf(f, "%d %d", &size, &steps);
 #ifdef DEBUG
     pthread_mutex_init(&mutexDEBUG, NULL);
-#endif
-
-    /* read the first new line (it will be ignored) */
-    char *s = (char *)malloc(size + 10);
-    fgets(s, size + 10, f);
-    free(s);
+#endif    
 
     // aloca só uma vez
     cell_t **prev, **next;
     prev = allocate_board(size);
+    read_file(f, prev, size);
+    
     next = allocate_board(size);
     // variável para o resultado final
     stats_t stats_total = {

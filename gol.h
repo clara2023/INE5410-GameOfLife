@@ -63,4 +63,4 @@ void print_stats(stats_t stats);
 
 /* Read a GoL board from a file */
 // alterada com os slices
-void read_file(FILE * f, cell_t ** board, int size, int begin, int end);
+void read_file(FILE * f, cell_t ** board, int size);
