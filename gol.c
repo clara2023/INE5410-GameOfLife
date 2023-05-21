@@ -13,6 +13,7 @@
  *
  */
 
+#include <pthread.h>
 #include <stdlib.h>
 #include "gol.h"
 
@@ -52,53 +53,43 @@ int adjacent_to(cell_t **board, int size, int i, int j)
 }
 
 // alterada para receber o slice que cada thread vai usar
-stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end)
-{
+void* play(void* arg) {
+    slice *param = (slice *)arg;
     int i, j, a;
 
-    stats_t stats = {0, 0, 0, 0};
-
     /* for each cell, apply the rules of Life */
-    for (i = 0; i < size; i++) {
+    for (i = 0; i < param->size; i++) {
         // só um dos for's é dividido,
         // caso contrário haveriam
         // regiões não varridas
-        for (j = begin; j < end; j++) {
-            a = adjacent_to(board, size, i, j);
+        for (j = param->beg; j < param->end; j++) {
+            a = adjacent_to(param->prev, param->size, i, j);
 
             /* if cell is alive */
-            if(board[i][j]) {
+            if(param->prev[i][j]) {
                 /* death: loneliness */
                 if(a < 2) {
-                    newboard[i][j] = 0;
-                    stats.loneliness++;
-                } else {
-                    /* survival */
-                    if(a == 2 || a == 3) {
-                        newboard[i][j] = board[i][j];
-                        stats.survivals++;
-                    } else {
-                        /* death: overcrowding */
-                        if(a > 3)
-                        {
-                            newboard[i][j] = 0;
-                            stats.overcrowding++;
-                        }
-                    }
+                    param->next[i][j] = 0;
+                    param->stats.loneliness++;
+                } else if(a > 3) { /* death: overcrowding */
+                        param->next[i][j] = 0;
+                        param->stats.overcrowding++;
+                } else { /* survival */
+                    param->next[i][j] = param->prev[i][j];
+                    param->stats.survivals++;
                 }
-            }
-            else { /* if cell is dead */
+            } else { /* if cell is dead */
                 if(a == 3) { /* new born */
-                    newboard[i][j] = 1;
-                    stats.borns++;
+                    param->next[i][j] = 1;
+                    param->stats.borns++;
                 } else { /* stay unchanged */
-                    newboard[i][j] = board[i][j];
+                    param->next[i][j] = param->prev[i][j];
                 }
             }
         }
     }
 
-    return stats;
+    pthread_exit(NULL);
 }
 
 void print_board(cell_t **board, int size)
@@ -122,20 +113,23 @@ void print_stats(stats_t stats)
         stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
 }
 // também dividida em slices
-void read_file(FILE *f, cell_t **board, int size, int begin, int end) {
+void *read_file(void *arg) {
+    leitura *param = (leitura*)arg;
+    
     // alterada para não ler a primeira linha
-    char *s = (char *)malloc(size + 10);
+    char *s = (char *)malloc(param->size + 10);
     
     /* read the life board */
-    for (int j = begin; j < end; j++) {
+    for (int j = param->begin; j < param->end; j++) {
         /* get a string */
-        fgets(s, size + 10, f);
+        fgets(s, param->size + 10, param->file);
 
         /* copy the string to the life board */
         // não é dividida em slices
-        for (int i = 0; i < size; i++)
-            board[i][j] = (s[i] == 'x');
+        for (int i = 0; i < param->size; i++)
+            param->board[i][j] = (s[i] == 'x');
     }
 
     free(s);
+    pthread_exit(NULL);
 }
