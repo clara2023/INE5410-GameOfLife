@@ -32,7 +32,8 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     free(s);
 
     // aloca só uma vez
-    cell_t **prev;
+    cell_t **prev, **next, **tmp;
+    next = allocate_board(size);;
     prev = allocate_board(size);
 
     // para dividir o tabuleiro
@@ -72,7 +73,8 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         }
 
         // o quadros para onde lerão
-        argu[i].board = prev;
+        argu[i].board = param[i].prev = prev;
+        param[i].next = next;
 
         // arquivo
         argu[i].file = f;
@@ -89,8 +91,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     fclose(f);
 
     //--------------------- JOGO paralelo ---------------------
-    cell_t **next, **tmp;
-    next = allocate_board(size);
     // variável para o resultado final
     stats_t stats_total = {
       0,
@@ -145,6 +145,10 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
             printf("Step %d ----------\n", j + 1);
             print_board(prev, size);
             print_stats(stats_step);
+            stats_step.borns = 0;
+            stats_step.survivals = 0;
+            stats_step.loneliness = 0;
+            stats_step.overcrowding = 0;
         #endif
         
         tmp = next;
