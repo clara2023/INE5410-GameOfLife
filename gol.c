@@ -16,8 +16,7 @@
 #include <stdlib.h>
 #include "gol.h"
 
-cell_t **allocate_board(int size)
-{
+cell_t **allocate_board(int size) {
     cell_t **board = (cell_t **)malloc(sizeof(cell_t *) * size);
     int i;
     for (i = 0; i < size; i++)
@@ -34,8 +33,7 @@ void free_board(cell_t **board, int size)
     free(board);
 }
 
-int adjacent_to(cell_t **board, int size, int i, int j)
-{
+int adjacent_to(cell_t **board, int size, int i, int j) {
     int k, l, count = 0;
 
     int sk = (i > 0) ? i - 1 : i;
@@ -52,8 +50,7 @@ int adjacent_to(cell_t **board, int size, int i, int j)
 }
 
 // alterada para receber o slice que cada thread vai usar
-stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end)
-{
+stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
     int i, j, a;
 
     stats_t stats = {0, 0, 0, 0};
@@ -101,8 +98,7 @@ stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end)
     return stats;
 }
 
-void print_board(cell_t **board, int size)
-{
+void print_board(cell_t **board, int size) {
     int i, j;
     /* for each row */
     for (j = 0; j < size; j++)
@@ -115,24 +111,25 @@ void print_board(cell_t **board, int size)
     }
 }
 
-void print_stats(stats_t stats)
-{
+void print_stats(stats_t stats) {
     /* print final statistics */
     printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
         stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
 }
-// também dividida em slices
-void read_file(FILE *f, cell_t **board, int size, int begin, int end) {
-    // alterada para não ler a primeira linha
-    char *s = (char *)malloc(size + 10);
-    
+
+void read_file(FILE *f, cell_t **board, int size) {
+    char *s = (char *) malloc(size + 10);
+
+    /* read the first new line (it will be ignored) */
+    fgets(s, size + 10, f);
+
     /* read the life board */
-    for (int j = begin; j < end; j++) {
+    for (int j = 0; j < size; j++)
+    {
         /* get a string */
         fgets(s, size + 10, f);
 
         /* copy the string to the life board */
-        // não é dividida em slices
         for (int i = 0; i < size; i++)
             board[i][j] = (s[i] == 'x');
     }
