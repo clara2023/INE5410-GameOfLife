@@ -92,8 +92,7 @@ void* play(void* arg) {
     pthread_exit(NULL);
 }
 
-void print_board(cell_t **board, int size)
-{
+void print_board(cell_t **board, int size) {
     int i, j;
     /* for each row */
     for (j = 0; j < size; j++)
@@ -106,8 +105,7 @@ void print_board(cell_t **board, int size)
     }
 }
 
-void print_stats(stats_t stats)
-{
+void print_stats(stats_t stats) {
     /* print final statistics */
     printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
         stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
