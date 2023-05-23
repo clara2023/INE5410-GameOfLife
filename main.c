@@ -56,38 +56,8 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         Nthreads--;
     }
 
-    //----------- leitura paralela do arquivo
-    
-    pthread_t T_read[Nthreads];
-    leitura argu[Nthreads];
-    slice param[Nthreads];
-
-    for (int i = 0; i < Nthreads; ++i) {
-        argu[i].size = param[i].size = size;
-        // divisão dos slices
-        argu[i].begin = param[i].beg = aux*i;
-        if (aux*(i+1) > size) {
-            argu[i].end = param[i].end = size;
-        } else {
-            argu[i].end = param[i].end = aux * (i + 1);
-        }
-
-        // o quadros para onde lerão
-        argu[i].board = param[i].prev = prev;
-        param[i].next = next;
-
-        // arquivo
-        argu[i].file = f;
-
-        pthread_create(&T_read[i], NULL,
-                       read_file,
-                       (void *)&argu[i]);
-    }
-    // impedindo a thread main de continuar
-    // até as trabalhadoras terminarem de ler
-    for (int i = 0; i < Nthreads; ++i) {
-        pthread_join(T_read[i], NULL);
-    }
+    //----------- leitura do arquivo
+    read_file(f, prev, size);
     fclose(f);
 
     //--------------------- JOGO paralelo ---------------------
@@ -105,6 +75,18 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     print_stats(stats_step);
     
 #endif
+    slice param[Nthreads];
+
+    for (int i = 0; i < Nthreads; ++i) {
+        param[i].size = size;
+        // divisão dos slices
+        param[i].beg = aux*i;
+        if (aux*(i+1) > size) {
+            param[i].end = size;
+        } else {
+            param[i].end = aux * (i + 1);
+        }
+    }
     pthread_t Th[Nthreads];
 
     for (int j = 0; j < steps; ++j) {

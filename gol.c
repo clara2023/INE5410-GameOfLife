@@ -110,24 +110,23 @@ void print_stats(stats_t stats) {
     printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
         stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
 }
-// também dividida em slices
-void *read_file(void *arg) {
-    leitura *param = (leitura*)arg;
-    
-    // alterada para não ler a primeira linha
-    char *s = (char *)malloc(param->size + 10);
-    
+
+void read_file(FILE * f, cell_t ** board, int size) {
+    char *s = (char *) malloc(size + 10);
+
+    /* read the first new line (it will be ignored) */
+    fgets(s, size + 10, f);
+
     /* read the life board */
-    for (int j = param->begin; j < param->end; j++) {
+    for (int j = 0; j < size; j++) {
         /* get a string */
-        fgets(s, param->size + 10, param->file);
+        fgets(s, size + 10, f);
 
         /* copy the string to the life board */
-        // não é dividida em slices
-        for (int i = 0; i < param->size; i++)
-            param->board[i][j] = (s[i] == 'x');
+        for (int i = 0; i < size; i++) {
+            board[i][j] = (s[i] == 'x');
+        }
     }
 
     free(s);
-    pthread_exit(NULL);
 }
