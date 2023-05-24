@@ -8,7 +8,6 @@
 
 // transformadas em variáveis globais
 // para permitir acesso pelas threads
-FILE *f;
 int size, steps, Nthreads;
 #ifdef DEBUG
     stats_t stats_step = {0, 0, 0, 0};
@@ -104,7 +103,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         argv[0]);
         return 1;
     }
-
+    FILE *f;
     if ((f = fopen(argv[1], "r")) == NULL) {
         printf("ERRO! O arquivo de tabuleiro '%s' não existe!\n\n",
                argv[1]);
