@@ -122,6 +122,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     cell_t **prev, **next;
     prev = allocate_board(size);
     read_file(f, prev, size);
+    fclose(f);
 
     next = allocate_board(size);
     // variável para o resultado final
@@ -146,7 +147,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         // para cima
         aux++;
     }
-    //elimina as threads desnecessárias
+    // elimina as threads desnecessárias
     while (aux * (Nthreads - 1) >= size) {
         Nthreads--;
     }
@@ -200,9 +201,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
     // usa outro for para garantir que
     // não interfira com a execução
     free(semaforo);
-    // na versão paralela,  o arquivo
-    // fica aberto durante o jogo todo
-    fclose(f);
     
 #ifdef RESULT
     printf("Final:\n");
