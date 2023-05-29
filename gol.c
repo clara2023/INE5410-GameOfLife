@@ -52,7 +52,7 @@ int adjacent_to(cell_t **board, int size, int i, int j) {
 void play(cell_t **board, cell_t **newboard,
              int size, int linhaI, int linhaF,
              int colunaI, int colunaF, stats_t *stats) {
-    int i, j, a;
+    int i, j, a, beg =colunaI, end;
 
     stats->borns = 0;
     stats->loneliness = 0;
@@ -61,7 +61,8 @@ void play(cell_t **board, cell_t **newboard,
 
     /* for each cell, apply the rules of Life */
     for (i = linhaI; i < linhaF; i++) {
-        for (j = colunaI; j < colunaF; j++) {
+        end = (i == (linhaF - 1))? colunaF : size;
+        for (j = beg; j < end; j++) {
             a = adjacent_to(board, size, i, j);
 
             /* if cell is alive */
@@ -89,6 +90,7 @@ void play(cell_t **board, cell_t **newboard,
                 }
             }
         }
+        beg = 0;
     }
 }
 

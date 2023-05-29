@@ -127,10 +127,12 @@ int main(int argc, char **argv) {
         // para cima
         arredonda = 1;
     }
-    linhas_por_thread = (cel_por_thread / size);
+    linhas_por_thread = cel_por_thread / size;
     colunas_por_thread = cel_por_thread % size;
     if (!colunas_por_thread) {
         colunas_por_thread = size;
+    } else {
+        linhas_por_thread++;
     }
     printf("cel_por_thread = %d\n", cel_por_thread);
     printf("linhas_por_thread = %d\n", linhas_por_thread);
@@ -145,26 +147,25 @@ int main(int argc, char **argv) {
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
-     
-    for (int i = 0; i < Nthreads; ++i) {
-        param[i].id = i;
 
+    for (int i = 0; i < Nthreads; ++i) {
         // divisão dos slices
         if (arredonda && i == resto_cel) {
             arredonda = 0;
         } if (!i) {
+            param[i].id = 0;
             param[i].linhaI = 0;
             param[i].linhaF = linhas_por_thread;
             param[i].colunaI = 0;
             param[i].colunaF = colunas_por_thread + arredonda;
         } else {
-            param[i].linhaI = param[i-i].linhaF - 1;
-            param[i].linhaF = param[i].linhaI + linhas_por_thread + 1;
-            param[i].colunaI = param[i-i].colunaF;
+            param[i].id = i;
+            param[i].linhaI = param[i-1].linhaF - 1;
+            param[i].linhaF = param[i].linhaI + linhas_por_thread;
+            param[i].colunaI = param[i-1].colunaF;
             param[i].colunaF = param[i].colunaI + colunas_por_thread + arredonda;
         }
         if (param[i].colunaF > size) {
-            param[i].linhaF++;
             param[i].colunaF = param[i].colunaF % size;
         }
         // recebendo estatísticas zeradas
@@ -180,6 +181,7 @@ int main(int argc, char **argv) {
                        jogar,
                        (void *)&param[i]);
     }
+    //}
     // impedindo a thread main de continuar
     // até as trabalhadoras terminares
     for (int i = 0; i < Nthreads; ++i) {
