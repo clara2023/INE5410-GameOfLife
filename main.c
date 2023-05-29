@@ -99,7 +99,9 @@ void* jogar(void *arg) {
 int main(int argc, char **argv) {
     
     if (argc != 3) {
-printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n\n",
+                printf("ERRO! Você deve digitar %s"
+                       " <nome do arquivo do tabuleiro> "
+                       "<Nthreads>!\n\n",
         argv[0]);
         return 1;
     }
