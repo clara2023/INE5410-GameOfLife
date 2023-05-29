@@ -142,19 +142,13 @@ int main(int argc, char **argv) {
         // divisão dos slices
         if (arredonda && i == resto_cel) {
             arredonda = 0;
-        } if (!i) {
-            param[i].id = 0;
-            param[i].linhaI = 0;
-            param[i].linhaF = linhas_por_thread;
-            param[i].colunaI = 0;
-            param[i].colunaF = colunas_por_thread + arredonda;
-        } else {
-            param[i].id = i;
-            param[i].linhaI = param[i-1].linhaF - 1;
-            param[i].linhaF = param[i].linhaI + linhas_por_thread;
-            param[i].colunaI = param[i-1].colunaF;
-            param[i].colunaF = param[i].colunaI + colunas_por_thread + arredonda;
         }
+        param[i].id = i;
+        param[i].linhaI = i? param[i-1].linhaF - 1 : 0;
+        param[i].linhaF = param[i].linhaI + linhas_por_thread;
+        param[i].colunaI = i? param[i-1].colunaF : 0;
+        param[i].colunaF = param[i].colunaI + colunas_por_thread + arredonda;
+
         if (param[i].colunaF > size) {
             param[i].linhaF++;
             param[i].colunaF = param[i].colunaF % size;
