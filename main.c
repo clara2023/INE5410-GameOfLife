@@ -22,11 +22,6 @@ void* jogar(void *arg) {
     sem_init(&semaforo[param->id], 0, 0);
 
     cell_t** tmp;
-    printf("Thread %d\n", param->id);
-    printf("linhaI = %d\n", param->linhaI);
-    printf("ColunaI = %d\n", param->colunaI);
-    printf("linhaF = %d\n", param->linhaF);
-    printf("colunaF = %d\n\n\n", param->colunaF);
 
     for (int step = 1; step <= steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
@@ -134,11 +129,6 @@ int main(int argc, char **argv) {
     } else {
         linhas_por_thread++;
     }
-    printf("cel_por_thread = %d\n", cel_por_thread);
-    printf("linhas_por_thread = %d\n", linhas_por_thread);
-    printf("colunas_por_thread = %d\n", colunas_por_thread);
-    printf("resto_cel = %d\n", resto_cel);
-    printf("arredonda = %d\n\n\n", arredonda);
 
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
@@ -166,8 +156,13 @@ int main(int argc, char **argv) {
             param[i].colunaF = param[i].colunaI + colunas_por_thread + arredonda;
         }
         if (param[i].colunaF > size) {
+            param[i].linhaF++;
             param[i].colunaF = param[i].colunaF % size;
+            if (!param[i].colunaF) {
+                param[i].colunaF = size;
+            }
         }
+        
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;
         param[i].stats_total = stats_total;
