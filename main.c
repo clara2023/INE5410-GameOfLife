@@ -24,14 +24,6 @@ void* jogar(void *arg) {
     // cada thread inicializando
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
-#ifdef DEBUG
-    // ---- só a thread 0
-    if (!param->id) {
-        printf("Initial:\n");
-        print_board(param->prev, size);
-        print_stats(stats_step);
-    }
-#endif
     cell_t** tmp;
 
     for (int i = 0; i < steps; i++) {
@@ -159,6 +151,11 @@ int main(int argc, char **argv) {
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
+#ifdef DEBUG
+    printf("Initial:\n");
+    print_board(prev, size);
+    print_stats(stats_step);
+#endif
      
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
