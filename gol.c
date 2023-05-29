@@ -80,7 +80,7 @@ stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
                     stats.overcrowding++;
                 } else {
                     /* survival */
-                    newboard[i][j] = board[i][j];
+                    newboard[i][j] = 1;
                     stats.survivals++;
                     }
             } else {
@@ -89,7 +89,7 @@ stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
                     newboard[i][j] = 1;
                     stats.borns++;
                 } else { /* stay unchanged */
-                    newboard[i][j] = board[i][j];
+                    newboard[i][j] = 0;
                 }
             }
         }
