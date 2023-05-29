@@ -1,4 +1,3 @@
-//#include <bits/pthreadtypes.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/types.h>
@@ -22,6 +21,9 @@ sem_t *semaforo;
 // retirada da main
 void* jogar(void *arg) {
     slice *param = (slice *)arg;
+    // cada thread inicializando
+    // o próprio semáforo
+    sem_init(&semaforo[param->id], 0, 0);
 #ifdef DEBUG
     // ---- só a thread 0
     if (!param->id) {
@@ -31,12 +33,17 @@ void* jogar(void *arg) {
     }
 #endif
     cell_t** tmp;
+    int linhaI = param->beg / size;
+    int colunaI = param->beg % size;
+    int linhaF = param->end / size;
+    int colunaF = param->end % size;
 
     for (int i = 0; i < steps; i++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
-        param->stats_step = play(param->prev, param->next,
-                                 size, param->beg, param->end);
+        play(param->prev, param->next,
+             linhaI, size, linhaF, colunaI,
+             colunaF, &(param->stats_step));
         // cada thread também tem suas próprias
         // estatísticas totais e por step
         param->stats_total.borns += param->stats_step.borns;
@@ -134,29 +141,25 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
     // para dividir o tabuleiro
     // entre as threads
-    int aux = size / Nthreads;
-    if (Nthreads >= size) {
+    int aux = size * size / Nthreads,
+        aux2 = 0, aux3 = size*size%Nthreads;
+    if (Nthreads > size*size) {
         // mais threads que linhas
-        // é um desperdício
+        // e colunas é um desperdício
         // nesse caso cada thread
-        // lida com uma coluna
+        // lida com uma célula
         Nthreads = size;
-        aux = 1;
-    } else if (size % Nthreads) {
+        aux = 1; aux3 = 0;
+    } else if (aux3) {
         // precisa arredondar
         // para cima
-        aux++;
-    }
-    // elimina as threads desnecessárias
-    while (aux * (Nthreads - 1) >= size) {
-        Nthreads--;
+        aux2 = 1;
     }
 
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
     FLAG_S = Nthreads;
     semaforo = (sem_t*)malloc(sizeof(sem_t)*Nthreads);
-    // para evitar dupla inicialização
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
@@ -165,11 +168,15 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         param[i].id = i;
 
         // divisão dos slices
-        param[i].beg = aux*i;
-        if (aux*(i+1) > size) {
-            param[i].end = size;
+        if (i == aux3) {
+
+            aux2 = 0;
+        } if (!i) {
+            param[i].beg = 0;
+            param[i].end = aux;
         } else {
-            param[i].end = aux * (i + 1);
+            param[i].beg = param[i-1].end;
+            param[i].end = param[i-1].end + aux + aux2;
         }
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;
@@ -179,9 +186,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         param[i].prev = prev;
         param[i].next = next;
 
-        // cada thread inicializando
-        // o próprio semáforo
-        sem_init(&semaforo[i], 0, 0);
 
         pthread_create(&Th[i], NULL,
                        jogar,

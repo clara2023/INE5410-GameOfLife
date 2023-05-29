@@ -15,6 +15,7 @@
 
 #include <stdlib.h>
 #include "gol.h"
+#include <omp.h>
 
 cell_t **allocate_board(int size) {
     cell_t **board = (cell_t **)malloc(sizeof(cell_t *) * size);
@@ -50,22 +51,17 @@ int adjacent_to(cell_t **board, int size, int i, int j) {
 }
 
 // alterada para receber o slice que cada thread vai usar
-stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
+void play(cell_t **board, cell_t **newboard,
+             int size, int linhaI, int linhaF,
+             int colunaI, int colunaF, stats_t *stats) {
     int i, j, a;
 
-    stats_t stats = {
-      0,
-      0,
-      0,
-      0
-    };
+    stats->borns = stats->loneliness = 0;
+    stats->overcrowding = stats->survivals = 0;
 
     /* for each cell, apply the rules of Life */
-    for (i = begin; i < end; i++) {
-        // só um dos for's é dividido,
-        // caso contrário haveriam
-        // regiões não varridas
-        for (j = 0; j < size; j++) {
+    for (i = linhaI; i < linhaF; i++) {
+        for (j = colunaI; j < colunaF; j++) {
             a = adjacent_to(board, size, i, j);
 
             /* if cell is alive */
@@ -73,28 +69,27 @@ stats_t play(cell_t **board, cell_t **newboard, int size, int begin, int end) {
                 /* death: loneliness */
                 if(a < 2) {
                     newboard[i][j] = 0;
-                    stats.loneliness++;
+                    stats->loneliness++;
                 } else if (a > 3) {
                     /* death: overcrowding */
                     newboard[i][j] = 0;
-                    stats.overcrowding++;
+                    stats->overcrowding++;
                 } else {
                     /* survival */
-                    newboard[i][j] = board[i][j];
-                    stats.survivals++;
+                    newboard[i][j] = 1;
+                    stats->survivals++;
                     }
             } else {
                 /* if cell is dead */
                 if(a == 3) { /* new born */
                     newboard[i][j] = 1;
-                    stats.borns++;
+                    stats->borns++;
                 } else { /* stay unchanged */
-                    newboard[i][j] = board[i][j];
+                    newboard[i][j] = 0;
                 }
             }
         }
     }
-    return stats;
 }
 
 void print_board(cell_t **board, int size) {
@@ -127,6 +122,7 @@ void read_file(FILE *f, cell_t **board, int size) {
         fgets(s, size + 10, f);
 
         /* copy the string to the life board */
+        #pragma omp parallel for num_threads(size), schedule(guided, 1)
         for (int i = 0; i < size; i++) {
             board[i][j] = (s[i] == 'x');
         }

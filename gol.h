@@ -50,9 +50,12 @@ void free_board(cell_t ** board, int size);
 /* Return the number of on cells adjacent to the i,j cell */
 int adjacent_to(cell_t ** board, int size, int i, int j);
 
-/* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
+/* Compute the next generation (newboard) based on
+the current generation (board) and returns its statistics */
 // alterada com os sices
-stats_t play(cell_t ** board, cell_t ** newboard, int size, int begin, int end);
+void play(cell_t **board, cell_t **newboard,
+             int size, int linhaI, int linhaF,
+             int colunaI, int colunaF, stats_t *stats);
 
 /* Print the GoL board */
 void print_board(cell_t ** board, int size);
