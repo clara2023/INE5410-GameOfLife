@@ -52,8 +52,7 @@ void* jogar(void *arg) {
         param->stats_total.overcrowding += param->stats_step.overcrowding;
 
         #ifdef DEBUG
-            // -------caso se deseje ver o passo a passo,
-            // -------a variável stats_step receberão os valores
+            // -------a variável stats_step recebera os valores
             // -------de cada thread
             pthread_mutex_lock(&mutexDEBUG);
             stats_step.borns += param->stats_step.borns;
@@ -99,7 +98,7 @@ void* jogar(void *arg) {
                 }
         #endif
     }
-    
+    sem_close(&semaforo[param->id]);
     pthread_exit(NULL);
 }
 
@@ -176,7 +175,7 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
             param[i].end = aux;
         } else {
             param[i].beg = param[i-1].end;
-            param[i].end = param[i-1].end + aux + aux2;
+            param[i].end = param[i].beg + aux + aux2;
         }
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;
@@ -202,8 +201,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         stats_total.survivals += param[i].stats_total.survivals;
     }
     pthread_mutex_destroy(&mutex0);
-    // usa outro for para garantir que
-    // não interfira com a execução
     free(semaforo);
     
 #ifdef RESULT

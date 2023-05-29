@@ -15,7 +15,6 @@
 
 #include <stdlib.h>
 #include "gol.h"
-#include <omp.h>
 
 cell_t **allocate_board(int size) {
     cell_t **board = (cell_t **)malloc(sizeof(cell_t *) * size);
@@ -56,8 +55,10 @@ void play(cell_t **board, cell_t **newboard,
              int colunaI, int colunaF, stats_t *stats) {
     int i, j, a;
 
-    stats->borns = stats->loneliness = 0;
-    stats->overcrowding = stats->survivals = 0;
+    stats->borns = 0;
+    stats->loneliness = 0;
+    stats->overcrowding = 0;
+    stats->survivals = 0;
 
     /* for each cell, apply the rules of Life */
     for (i = linhaI; i < linhaF; i++) {
@@ -122,7 +123,6 @@ void read_file(FILE *f, cell_t **board, int size) {
         fgets(s, size + 10, f);
 
         /* copy the string to the life board */
-        #pragma omp parallel for num_threads(size), schedule(guided, 1)
         for (int i = 0; i < size; i++) {
             board[i][j] = (s[i] == 'x');
         }
