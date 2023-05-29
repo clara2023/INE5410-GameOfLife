@@ -25,8 +25,7 @@ cell_t **allocate_board(int size) {
     return board;
 }
 
-void free_board(cell_t **board, int size)
-{
+void free_board(cell_t **board, int size) {
     int i;
     for (i = 0; i < size; i++)
         free(board[i]);

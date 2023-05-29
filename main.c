@@ -8,9 +8,6 @@
 // transformadas em variáveis globais
 // para permitir acesso pelas threads
 int size, steps, Nthreads;
-#ifdef DEBUG
-    stats_t stats_step = {0, 0, 0, 0};
-#endif
 // controle de concorrência
 int FLAG_S;
 pthread_mutex_t mutex0;
@@ -25,27 +22,19 @@ void* jogar(void *arg) {
     sem_init(&semaforo[param->id], 0, 0);
 
     cell_t** tmp;
-    int linhaI = param->beg / size;
-    int colunaI = param->beg % size;
-    int linhaF = param->end / size;
-    int colunaF = param->end % size;
-    if (!colunaF) {
-        colunaF = size;
-    }
     printf("Thread %d\n", param->id);
-    printf("begin %d\n", param->beg);
-    printf("end %d\n\n", param->end);
-    printf("linhaI = %d\n", linhaI);
-    printf("ColunaI = %d\n", colunaI);
-    printf("linhaF = %d\n", linhaF);
-    printf("colunaF = %d\n\n\n", colunaF);
+    printf("linhaI = %d\n", param->linhaI);
+    printf("ColunaI = %d\n", param->colunaI);
+    printf("linhaF = %d\n", param->linhaF);
+    printf("colunaF = %d\n\n\n", param->colunaF);
 
-    for (int i = 0; i < steps; i++) {
+    for (int step = 1; step <= steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
-        play(param->prev, param->next,
-             size, linhaI, linhaF, colunaI,
-             colunaF, &(param->stats_step));
+        play(param->prev, param->next, size,
+             param->linhaI, param->linhaF,
+             param->colunaI, param->colunaF,
+             &(param->stats_step));
         // cada thread também tem suas próprias
         // estatísticas totais e por step
         param->stats_total.borns += param->stats_step.borns;
@@ -60,14 +49,6 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
-        #ifdef DEBUG
-            // -------a variável stats_step recebera os valores
-            // -------de cada thread
-            stats_step.borns += param->stats_step.borns;
-            stats_step.survivals += param->stats_step.survivals;
-            stats_step.loneliness += param->stats_step.loneliness;
-            stats_step.overcrowding += param->stats_step.overcrowding;
-        #endif
         
         // serve como um wait, para que as threads
         // não prossigam para o próximo tabuleiro
@@ -78,26 +59,13 @@ void* jogar(void *arg) {
             // a última thread a chegar
             // libera as outras
             FLAG_S = Nthreads;
-            for (int t = 0; t < Nthreads; t++) {
-                sem_post(&semaforo[t]);
+            for (int i = 0; i < Nthreads; i++) {
+                sem_post(&semaforo[i]);
             }
         }
         pthread_mutex_unlock(&mutex0);
         // trava todas as threads até a última
         sem_wait(&(semaforo[param->id]));
-
-        #ifdef DEBUG
-            // só a thread Nthreads-1
-            if (param->id == Nthreads - 1) {
-                printf("Step %d ----------\n", i + 1);
-                print_board(param->prev, size);
-                print_stats(stats_step);
-                stats_step.borns = 0;
-                stats_step.survivals = 0;
-                stats_step.loneliness = 0;
-                stats_step.overcrowding = 0;
-                }
-        #endif
     }
     sem_destroy(&semaforo[param->id]);
     pthread_exit(NULL);
@@ -141,26 +109,34 @@ int main(int argc, char **argv) {
 
     // para dividir o tabuleiro
     // entre as threads
-    int aux = (size*size) / Nthreads,
-        aux2 = 0, aux3 = (size*size) % Nthreads;
-    printf("aux antes = %d\n", aux);
-    printf("aux2 antes = %d\n", aux2);
-    printf("aux3 antes = %d\n\n\n", aux3);
-    if (!aux) {
+    int cel_por_thread, resto_cel,
+        linhas_por_thread,
+        colunas_por_thread,
+        arredonda = 0;
+    if (Nthreads > size*size) {
         // mais threads que células
         // é um desperdício, nesse
         // caso, cada thread lida
         // com uma célula
         Nthreads = size*size;
-        aux = 1; aux3 = 0;
-    } else if (aux3) {
+    }
+    cel_por_thread = (size * size) / Nthreads;
+    resto_cel = (size * size) % Nthreads;    
+    if (resto_cel) {
         // precisa arredondar
         // para cima
-        aux2 = 1;
+        arredonda = 1;
     }
-    printf("aux = %d\n", aux);
-    printf("aux2 = %d\n", aux2);
-    printf("aux3 = %d\n\n\n", aux3);
+    linhas_por_thread = (cel_por_thread / size);
+    colunas_por_thread = cel_por_thread % size;
+    if (!colunas_por_thread) {
+        colunas_por_thread = size;
+    }
+    printf("cel_por_thread = %d\n", cel_por_thread);
+    printf("linhas_por_thread = %d\n", linhas_por_thread);
+    printf("colunas_por_thread = %d\n", colunas_por_thread);
+    printf("resto_cel = %d\n", resto_cel);
+    printf("arredonda = %d\n\n\n", arredonda);
 
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
@@ -169,25 +145,27 @@ int main(int argc, char **argv) {
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
-#ifdef DEBUG
-    printf("Initial:\n");
-    print_board(prev, size);
-    print_stats(stats_step);
-#endif
      
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
 
         // divisão dos slices
-        if (i == aux3 && aux2) {
-
-            aux2 = 0;
+        if (arredonda && i == resto_cel) {
+            arredonda = 0;
         } if (!i) {
-            param[i].beg = 0;
-            param[i].end = aux + aux2;
+            param[i].linhaI = 0;
+            param[i].linhaF = linhas_por_thread;
+            param[i].colunaI = 0;
+            param[i].colunaF = colunas_por_thread + arredonda;
         } else {
-            param[i].beg = param[i-1].end;
-            param[i].end = param[i].beg + aux + aux2;
+            param[i].linhaI = param[i-i].linhaF - 1;
+            param[i].linhaF = param[i].linhaI + linhas_por_thread + 1;
+            param[i].colunaI = param[i-i].colunaF;
+            param[i].colunaF = param[i].colunaI + colunas_por_thread + arredonda;
+        }
+        if (param[i].colunaF > size) {
+            param[i].linhaF++;
+            param[i].colunaF = param[i].colunaF % size;
         }
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;
