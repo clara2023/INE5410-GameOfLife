@@ -1,4 +1,3 @@
-//#include <bits/pthreadtypes.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/types.h>
@@ -11,7 +10,6 @@
 int size, steps, Nthreads;
 #ifdef DEBUG
     stats_t stats_step = {0, 0, 0, 0};
-    pthread_mutex_t mutexDEBUG;
 #endif
 // controle de concorrência
 int FLAG_S;
@@ -22,6 +20,10 @@ sem_t *semaforo;
 // retirada da main
 void* jogar(void *arg) {
     slice *param = (slice *)arg;
+
+    // cada thread inicializando
+    // o próprio semáforo
+    sem_init(&semaforo[param->id], 0, 0);
 #ifdef DEBUG
     // ---- só a thread 0
     if (!param->id) {
@@ -44,17 +46,6 @@ void* jogar(void *arg) {
         param->stats_total.loneliness += param->stats_step.loneliness;
         param->stats_total.overcrowding += param->stats_step.overcrowding;
 
-        #ifdef DEBUG
-            // -------caso se deseje ver o passo a passo,
-            // -------a variável stats_step receberão os valores
-            // -------de cada thread
-            pthread_mutex_lock(&mutexDEBUG);
-            stats_step.borns += param->stats_step.borns;
-            stats_step.survivals += param->stats_step.survivals;
-            stats_step.loneliness += param->stats_step.loneliness;
-            stats_step.overcrowding += param->stats_step.overcrowding;
-            pthread_mutex_unlock(&mutexDEBUG);
-        #endif
         tmp = param->next;
         param->next = param->prev;
         param->prev = tmp;
@@ -62,6 +53,15 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
+        #ifdef DEBUG
+            // -------caso se deseje ver o passo a passo,
+            // -------a variável stats_step receberá os
+            // -------valores de cada thread
+            stats_step.borns += param->stats_step.borns;
+            stats_step.survivals += param->stats_step.survivals;
+            stats_step.loneliness += param->stats_step.loneliness;
+            stats_step.overcrowding += param->stats_step.overcrowding;
+        #endif
         // serve como um wait, para que as threads
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
@@ -92,7 +92,7 @@ void* jogar(void *arg) {
                 }
         #endif
     }
-    
+    sem_destroy(&semaforo[param->id]);
     pthread_exit(NULL);
 }
 
@@ -114,9 +114,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
     // recebe os parâmetros size e steps do arquivo input
     fscanf(f, "%d %d", &size, &steps);
-#ifdef DEBUG
-    pthread_mutex_init(&mutexDEBUG, NULL);
-#endif    
 
     // aloca só uma vez
     cell_t **prev, **next;
@@ -178,10 +175,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
         // os quadros que manipularão
         param[i].prev = prev;
         param[i].next = next;
-
-        // cada thread inicializando
-        // o próprio semáforo
-        sem_init(&semaforo[i], 0, 0);
 
         pthread_create(&Th[i], NULL,
                        jogar,
