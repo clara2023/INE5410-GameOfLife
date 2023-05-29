@@ -10,7 +10,6 @@
 int size, steps, Nthreads;
 #ifdef DEBUG
     stats_t stats_step = {0, 0, 0, 0};
-    pthread_mutex_t mutexDEBUG;
 #endif
 // controle de concorrência
 int FLAG_S;
@@ -24,25 +23,28 @@ void* jogar(void *arg) {
     // cada thread inicializando
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
-#ifdef DEBUG
-    // ---- só a thread 0
-    if (!param->id) {
-        printf("Initial:\n");
-        print_board(param->prev, size);
-        print_stats(stats_step);
-    }
-#endif
+
     cell_t** tmp;
     int linhaI = param->beg / size;
     int colunaI = param->beg % size;
     int linhaF = param->end / size;
     int colunaF = param->end % size;
+    if (!colunaF) {
+        colunaF = size;
+    }
+    printf("Thread %d\n", param->id);
+    printf("begin %d\n", param->beg);
+    printf("end %d\n\n", param->end);
+    printf("linhaI = %d\n", linhaI);
+    printf("ColunaI = %d\n", colunaI);
+    printf("linhaF = %d\n", linhaF);
+    printf("colunaF = %d\n\n\n", colunaF);
 
     for (int i = 0; i < steps; i++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
         play(param->prev, param->next,
-             linhaI, size, linhaF, colunaI,
+             size, linhaI, linhaF, colunaI,
              colunaF, &(param->stats_step));
         // cada thread também tem suas próprias
         // estatísticas totais e por step
@@ -51,16 +53,6 @@ void* jogar(void *arg) {
         param->stats_total.loneliness += param->stats_step.loneliness;
         param->stats_total.overcrowding += param->stats_step.overcrowding;
 
-        #ifdef DEBUG
-            // -------a variável stats_step recebera os valores
-            // -------de cada thread
-            pthread_mutex_lock(&mutexDEBUG);
-            stats_step.borns += param->stats_step.borns;
-            stats_step.survivals += param->stats_step.survivals;
-            stats_step.loneliness += param->stats_step.loneliness;
-            stats_step.overcrowding += param->stats_step.overcrowding;
-            pthread_mutex_unlock(&mutexDEBUG);
-        #endif
         tmp = param->next;
         param->next = param->prev;
         param->prev = tmp;
@@ -68,6 +60,15 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
+        #ifdef DEBUG
+            // -------a variável stats_step recebera os valores
+            // -------de cada thread
+            stats_step.borns += param->stats_step.borns;
+            stats_step.survivals += param->stats_step.survivals;
+            stats_step.loneliness += param->stats_step.loneliness;
+            stats_step.overcrowding += param->stats_step.overcrowding;
+        #endif
+        
         // serve como um wait, para que as threads
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
@@ -86,8 +87,8 @@ void* jogar(void *arg) {
         sem_wait(&(semaforo[param->id]));
 
         #ifdef DEBUG
-            // só a thread 0
-            if (!param->id) {
+            // só a thread Nthreads-1
+            if (param->id == Nthreads - 1) {
                 printf("Step %d ----------\n", i + 1);
                 print_board(param->prev, size);
                 print_stats(stats_step);
@@ -98,20 +99,23 @@ void* jogar(void *arg) {
                 }
         #endif
     }
-    sem_close(&semaforo[param->id]);
+    sem_destroy(&semaforo[param->id]);
     pthread_exit(NULL);
 }
 
 int main(int argc, char **argv) {
     
     if (argc != 3) {
-printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n\n",
+                printf("ERRO! Você deve digitar %s"
+                       " <nome do arquivo do tabuleiro>"
+                       " <Nthreads>!\n\n",
         argv[0]);
         return 1;
     }
     FILE *f;
     if ((f = fopen(argv[1], "r")) == NULL) {
-        printf("ERRO! O arquivo de tabuleiro '%s' não existe!\n\n",
+        printf("ERRO! O arquivo de tabuleiro '%s'"
+               " não existe!\n\n",
                argv[1]);
         return 1;
     }
@@ -120,9 +124,6 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
     // recebe os parâmetros size e steps do arquivo input
     fscanf(f, "%d %d", &size, &steps);
-#ifdef DEBUG
-    pthread_mutex_init(&mutexDEBUG, NULL);
-#endif    
 
     // aloca só uma vez
     cell_t **prev, **next;
@@ -140,20 +141,26 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
     // para dividir o tabuleiro
     // entre as threads
-    int aux = size * size / Nthreads,
-        aux2 = 0, aux3 = size*size%Nthreads;
-    if (Nthreads > size*size) {
-        // mais threads que linhas
-        // e colunas é um desperdício
-        // nesse caso cada thread
-        // lida com uma célula
-        Nthreads = size;
+    int aux = (size*size) / Nthreads,
+        aux2 = 0, aux3 = (size*size) % Nthreads;
+    printf("aux antes = %d\n", aux);
+    printf("aux2 antes = %d\n", aux2);
+    printf("aux3 antes = %d\n\n\n", aux3);
+    if (!aux) {
+        // mais threads que células
+        // é um desperdício, nesse
+        // caso, cada thread lida
+        // com uma célula
+        Nthreads = size*size;
         aux = 1; aux3 = 0;
     } else if (aux3) {
         // precisa arredondar
         // para cima
         aux2 = 1;
     }
+    printf("aux = %d\n", aux);
+    printf("aux2 = %d\n", aux2);
+    printf("aux3 = %d\n\n\n", aux3);
 
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
@@ -162,17 +169,22 @@ printf("ERRO! Você deve digitar %s <nome do arquivo do tabuleiro> <Nthreads>!\n
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
+#ifdef DEBUG
+    printf("Initial:\n");
+    print_board(prev, size);
+    print_stats(stats_step);
+#endif
      
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
 
         // divisão dos slices
-        if (i == aux3) {
+        if (i == aux3 && aux2) {
 
             aux2 = 0;
         } if (!i) {
             param[i].beg = 0;
-            param[i].end = aux;
+            param[i].end = aux + aux2;
         } else {
             param[i].beg = param[i-1].end;
             param[i].end = param[i].beg + aux + aux2;
