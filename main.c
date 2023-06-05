@@ -33,7 +33,7 @@ void* jogar(void *arg) {
         colunaI += resto_cel;
         colunaF += resto_cel;
     }
-    int linhaI = (linhas_por_thread - 1)*(param->id) 
+    int linhaI = (linhas_por_thread - 1)*(param->id); 
     int linhaF = linhaI + linhas_por_thread + colunaF/size;
     linhaI += colunaI/size;
     colunaI %= size;
