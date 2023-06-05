@@ -8,6 +8,9 @@
 // transformadas em variáveis globais
 // para permitir acesso pelas threads
 int size, steps, Nthreads;
+int resto_cel,
+    linhas_por_thread,
+    colunas_por_thread;
 // controle de concorrência
 int FLAG_S;
 pthread_mutex_t mutex0;
@@ -21,14 +24,33 @@ void* jogar(void *arg) {
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
 
+    int colunaI = colunas_por_thread*(param->id);
+    int colunaF = colunaI + colunas_por_thread;
+    if (resto_cel && param->id < resto_cel) {
+        colunaI += param->id;
+        colunaF += param->id + 1;
+    } else {
+        colunaI += resto_cel;
+        colunaF += resto_cel;
+    }
+    int linhaI = (linhas_por_thread - 1)*(param->id) 
+    int linhaF = linhaI + linhas_por_thread + colunaF/size;
+    linhaI += colunaI/size;
+    colunaI %= size;
+    colunaF %= size;
+    if (!colunaF) {
+        colunaF = size;
+        linhaF--;
+    }
+
     cell_t** tmp;
 
     for (int step = 1; step <= steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
         play(param->prev, param->next, size,
-             param->linhaI, param->linhaF,
-             param->colunaI, param->colunaF,
+             linhaI, linhaF,
+             colunaI, colunaF,
              &(param->stats_step));
         // cada thread também tem suas próprias
         // estatísticas totais e por step
@@ -104,10 +126,6 @@ int main(int argc, char **argv) {
 
     // para dividir o tabuleiro
     // entre as threads
-    int cel_por_thread, resto_cel,
-        linhas_por_thread,
-        colunas_por_thread,
-        arredonda = 0;
     if (Nthreads > size*size) {
         // mais threads que células
         // é um desperdício, nesse
@@ -115,14 +133,9 @@ int main(int argc, char **argv) {
         // com uma célula
         Nthreads = size*size;
     }
-    cel_por_thread = (size * size) / Nthreads;
-    resto_cel = (size * size) % Nthreads;    
-    if (resto_cel) {
-        // precisa arredondar
-        // para cima
-        arredonda = 1;
-    }
-    linhas_por_thread = cel_por_thread / size;
+    int cel_por_thread = (size * size) / Nthreads;
+    resto_cel = (size * size) % Nthreads;
+    linhas_por_thread = (cel_por_thread / size);
     colunas_por_thread = cel_por_thread % size;
     if (!colunas_por_thread) {
         colunas_por_thread = size;
@@ -139,23 +152,7 @@ int main(int argc, char **argv) {
     slice param[Nthreads];
 
     for (int i = 0; i < Nthreads; ++i) {
-        // divisão dos slices
-        if (arredonda && i == resto_cel) {
-            arredonda = 0;
-        }
         param[i].id = i;
-        param[i].linhaI = i? param[i-1].linhaF - 1 : 0;
-        param[i].linhaF = param[i].linhaI + linhas_por_thread;
-        param[i].colunaI = i? param[i-1].colunaF : 0;
-        param[i].colunaF = param[i].colunaI + colunas_por_thread + arredonda;
-
-        if (param[i].colunaF > size) {
-            param[i].linhaF++;
-            param[i].colunaF = param[i].colunaF % size;
-            if (!param[i].colunaF) {
-                param[i].colunaF = size;
-            }
-        }
         
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;

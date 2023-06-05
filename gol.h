@@ -32,11 +32,6 @@ typedef struct {
   // e condições de corrida
   int id;
   // paralelismo de fato
-  int linhaI;
-  int linhaF;
-  int colunaI;
-  int colunaF;
-  // leitura dos tabuleiros
   stats_t stats_step;
   stats_t stats_total;
   cell_t** prev;
