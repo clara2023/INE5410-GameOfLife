@@ -181,6 +181,11 @@ int main(int argc, char **argv) {
     pthread_mutex_destroy(&mutex0);
     free(semaforo);
     
+#ifdef DEBUG
+        printf("Step %d ----------\n", i + 1);
+        print_board(next, size);
+        print_stats(stats_step);
+#endif
 #ifdef RESULT
     printf("Final:\n");
     print_board(prev, size);
@@ -191,3 +196,4 @@ int main(int argc, char **argv) {
     free_board(next, size);
     return 0;
 }
+
