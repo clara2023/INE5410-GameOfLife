@@ -31,11 +31,20 @@ typedef struct {
   // para evitar duplicação
   // e condições de corrida
   int id;
+  int size;
+  int Nthreads;
+  int steps;
+  int resto_cel;
+  int linhas_por_thread;
+  int colunas_por_thread;
   // paralelismo de fato
   stats_t stats_step;
   stats_t stats_total;
   cell_t** prev;
   cell_t** next;
+  // controle de concorrência
+  pthread_mutex_t *mutex;
+  sem_t **semaforo;
 } slice;
 
 /* Allocate a GoL board of size = size^3 */
