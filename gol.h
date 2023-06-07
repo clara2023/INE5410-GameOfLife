@@ -1,4 +1,6 @@
+#include <bits/pthreadtypes.h>
 #include <stdio.h>
+#include <semaphore.h>
 
 /*
  * The Game of Life
@@ -24,7 +26,19 @@ typedef struct {
     unsigned int survivals;
 } stats_t;
 
-/* Allocate a GoL board of size = size^2 */
+// parametros das threads
+typedef struct {
+  // para evitar duplicação
+  // e condições de corrida
+  int id;
+  // paralelismo de fato
+  stats_t stats_step;
+  stats_t stats_total;
+  cell_t** prev;
+  cell_t** next;
+} slice;
+
+/* Allocate a GoL board of size = size^3 */
 cell_t ** allocate_board(int size);
 
 /* Deallocate a GoL board of size = size^2 */
@@ -33,8 +47,12 @@ void free_board(cell_t ** board, int size);
 /* Return the number of on cells adjacent to the i,j cell */
 int adjacent_to(cell_t ** board, int size, int i, int j);
 
-/* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
-stats_t play(cell_t ** board, cell_t ** newboard, int size);
+/* Compute the next generation (newboard) based on
+the current generation (board) and returns its statistics */
+// alterada com os sices
+void play(cell_t **board, cell_t **newboard,
+             int size, int linhaI, int linhaF,
+             int colunaI, int colunaF, stats_t *stats);
 
 /* Print the GoL board */
 void print_board(cell_t ** board, int size);
@@ -43,4 +61,5 @@ void print_board(cell_t ** board, int size);
 void print_stats(stats_t stats);
 
 /* Read a GoL board from a file */
+// alterada com os slices
 void read_file(FILE * f, cell_t ** board, int size);
