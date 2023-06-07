@@ -16,34 +16,23 @@
 #include <stdlib.h>
 #include "gol.h"
 
-/* Statistics */
-stats_t statistics;
-
-cell_t **allocate_board(int size)
-{
+cell_t **allocate_board(int size) {
     cell_t **board = (cell_t **)malloc(sizeof(cell_t *) * size);
     int i;
     for (i = 0; i < size; i++)
         board[i] = (cell_t *)malloc(sizeof(cell_t) * size);
-    
-    statistics.borns = 0;
-    statistics.survivals = 0;
-    statistics.loneliness = 0;
-    statistics.overcrowding = 0;
 
     return board;
 }
 
-void free_board(cell_t **board, int size)
-{
+void free_board(cell_t **board, int size) {
     int i;
     for (i = 0; i < size; i++)
         free(board[i]);
     free(board);
 }
 
-int adjacent_to(cell_t **board, int size, int i, int j)
-{
+int adjacent_to(cell_t **board, int size, int i, int j) {
     int k, l, count = 0;
 
     int sk = (i > 0) ? i - 1 : i;
@@ -59,69 +48,56 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
-stats_t play(cell_t **board, cell_t **newboard, int size)
-{
-    int i, j, a;
+// alterada para receber o slice que cada thread vai usar
+void play(cell_t **board, cell_t **newboard,
+             int size, int linhaI, int linhaF,
+             int colunaI, int colunaF, stats_t *stats) {
+    int i, j, a, beg =colunaI, end;
 
-    stats_t stats = {0, 0, 0, 0};
+    stats->borns = 0;
+    stats->loneliness = 0;
+    stats->overcrowding = 0;
+    stats->survivals = 0;
 
     /* for each cell, apply the rules of Life */
-    for (i = 0; i < size; i++)
-    {
-        for (j = 0; j < size; j++)
-        {
+    for (i = linhaI; i < linhaF; i++) {
+        end = (i == (linhaF - 1))? colunaF : size;
+        for (j = beg; j < end; j++) {
             a = adjacent_to(board, size, i, j);
 
             /* if cell is alive */
-            if(board[i][j]) 
-            {
+            if(board[i][j]) {
                 /* death: loneliness */
                 if(a < 2) {
                     newboard[i][j] = 0;
-                    stats.loneliness++;
-                }
-                else
-                {
+                    stats->loneliness++;
+                } else if (a > 3) {
+                    /* death: overcrowding */
+                    newboard[i][j] = 0;
+                    stats->overcrowding++;
+                } else {
                     /* survival */
-                    if(a == 2 || a == 3)
-                    {
-                        newboard[i][j] = board[i][j];
-                        stats.survivals++;
-                    }
-                    else
-                    {
-                        /* death: overcrowding */
-                        if(a > 3)
-                        {
-                            newboard[i][j] = 0;
-                            stats.overcrowding++;
-                        }
-                    }
-                }
-                
-            }
-            else /* if cell is dead */
-            {
-                if(a == 3) /* new born */
-                {
                     newboard[i][j] = 1;
-                    stats.borns++;
+                    stats->survivals++;
+                    }
+            } else {
+                /* if cell is dead */
+                if(a == 3) { /* new born */
+                    newboard[i][j] = 1;
+                    stats->borns++;
+                } else { /* stay unchanged */
+                    newboard[i][j] = 0;
                 }
-                else /* stay unchanged */
-                    newboard[i][j] = board[i][j];
             }
         }
+        beg = 0;
     }
-
-    return stats;
 }
 
-void print_board(cell_t **board, int size)
-{
+void print_board(cell_t **board, int size) {
     int i, j;
     /* for each row */
-    for (j = 0; j < size; j++)
-    {
+    for (j = 0; j < size; j++) {
         /* print each column position... */
         for (i = 0; i < size; i++)
             printf("%c", board[i][j] ? 'x' : ' ');
@@ -130,29 +106,27 @@ void print_board(cell_t **board, int size)
     }
 }
 
-void print_stats(stats_t stats)
-{
+void print_stats(stats_t stats) {
     /* print final statistics */
     printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
         stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
 }
 
-void read_file(FILE *f, cell_t **board, int size)
-{
+void read_file(FILE *f, cell_t **board, int size) {
     char *s = (char *) malloc(size + 10);
 
     /* read the first new line (it will be ignored) */
     fgets(s, size + 10, f);
 
     /* read the life board */
-    for (int j = 0; j < size; j++)
-    {
+    for (int j = 0; j < size; j++) {
         /* get a string */
         fgets(s, size + 10, f);
 
         /* copy the string to the life board */
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < size; i++) {
             board[i][j] = (s[i] == 'x');
+        }
     }
 
     free(s);
