@@ -9,6 +9,9 @@
 int FLAG_S;
 pthread_mutex_t mutex0;
 sem_t *semaforo;
+#ifdef DEBUG
+    stats_t stats_step = {0,0,0,0};
+#endif
 
 // Função que as threads executam,
 // retirada da main
@@ -18,14 +21,11 @@ void* jogar(void *arg) {
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
 
-    int colunaI = (param->colunas_por_thread)*(param->id);
+    int colunaI = (param->colunas_por_thread)*(param->id) + param->resto_cel;
     int colunaF = colunaI + (param->colunas_por_thread);
     if (param->resto_cel && param->id < param->resto_cel) {
-        colunaI += param->id;
-        colunaF += param->id + 1;
-    } else {
-        colunaI += param->resto_cel;
-        colunaF += param->resto_cel;
+        colunaI += (param->id - param->resto_cel);
+        colunaF += (param->id - param->resto_cel) + 1;
     }
     int linhaI = (param->linhas_por_thread - 1)*(param->id); 
     int linhaF = linhaI + param->linhas_por_thread + colunaF/(param->size);
@@ -65,11 +65,26 @@ void* jogar(void *arg) {
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
         FLAG_S--;
+        #ifdef DEBUG
+            stats_step.borns += param->stats_step.borns;
+            stats_step.survivals += param->stats_step.survivals;
+            stats_step.loneliness += param->stats_step.loneliness;
+            stats_step.overcrowding += param->stats_step.overcrowding;
+        #endif
 
         if (!FLAG_S) {
             // a última thread a chegar
             // libera as outras
             FLAG_S = param->Nthreads;
+            #ifdef DEBUG
+                printf("Step %d ----------\n", step);
+                print_board(param->prev, param->size);
+                print_stats(stats_step);
+                stats_step.borns = 0;
+                stats_step.survivals = 0;
+                stats_step.loneliness = 0;
+                stats_step.overcrowding = 0;
+            #endif
             for (int i = 0; i < param->Nthreads; i++) {
                 sem_post(&semaforo[i]);
             }
@@ -130,7 +145,7 @@ int main(int argc, char **argv) {
     }
     int cel_por_thread = (size * size) / Nthreads;
     int resto_cel = (size * size) % Nthreads;
-    int linhas_por_thread = (cel_por_thread / size);
+    int linhas_por_thread = cel_por_thread / size;
     int colunas_por_thread = cel_por_thread % size;
     if (!colunas_por_thread) {
         colunas_por_thread = size;
@@ -182,12 +197,7 @@ int main(int argc, char **argv) {
     }
     pthread_mutex_destroy(&mutex0);
     free(semaforo);
-    
-#ifdef DEBUG
-        printf("Step %d ----------\n", i + 1);
-        print_board(next, size);
-        print_stats(stats_step);
-#endif
+
 #ifdef RESULT
     printf("Final:\n");
     print_board(prev, size);

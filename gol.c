@@ -52,7 +52,7 @@ int adjacent_to(cell_t **board, int size, int i, int j) {
 void play(cell_t **board, cell_t **newboard,
              int size, int linhaI, int linhaF,
              int colunaI, int colunaF, stats_t *stats) {
-    int i, j, a, beg =colunaI, end;
+    int i, j, a, beg = colunaI, end;
 
     stats->borns = 0;
     stats->loneliness = 0;
