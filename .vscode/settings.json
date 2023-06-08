@@ -42,5 +42,10 @@
   "vim.cursorStylePerMode.visualblock": "line",
   "vim.cursorStylePerMode.visual": "underline",
   "workbench.preferredLightColorTheme": "Visual Studio Dark - C++",
-  "workbench.preferredHighContrastLightColorTheme": "Default High Contrast"
+  "workbench.preferredHighContrastLightColorTheme": "Default High Contrast",
+  "scm.defaultViewMode": "tree",
+  "workbench.editor.restoreViewState": false,
+  "search.defaultViewMode": "tree",
+  "vim.cursorStylePerMode.replace": "line-thin",
+  "vim.cursorStylePerMode.insert": "line"
 }
