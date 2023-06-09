@@ -7,12 +7,17 @@
  *
  * RULES:
  *  1. A cell is born, if it has exactly three neighbours.
- *  2. A cell dies of loneliness, if it has less than two neighbours.
- *  3. A cell dies of overcrowding, if it has more than three neighbours.
- *  4. A cell survives to the next generation, if it does not die of lonelines or overcrowding.
+ *  2. A cell dies of loneliness,
+ *     if it has less than two neighbours.
+ *  3. A cell dies of overcrowding,
+ *     if it has more than three neighbours.
+ *  4. A cell survives to the next generation,
+ *     if it does not die of lonelines or overcrowding.
  *
- * In this version, a 2D array of ints is used.  A 1 cell is on, a 0 cell is off.
- * The game plays a number of steps (given by the input), printing to the screen each time.
+ * In this version, a 2D array of ints is used.
+ * A 1 cell is on, a 0 cell is off.
+ * The game plays a number of steps (given by the input),
+ * printing to the screen each time.
  * A 'x' printed means on, space means off.
  *
  */
@@ -31,11 +36,20 @@ typedef struct {
   // para evitar duplicação
   // e condições de corrida
   int id;
+  int size;
+  int Nthreads;
+  int steps;
+  int resto_cel;
+  int linhas_por_thread;
+  int colunas_por_thread;
   // paralelismo de fato
   stats_t stats_step;
   stats_t stats_total;
   cell_t** prev;
   cell_t** next;
+  // controle de concorrência
+  pthread_mutex_t *mutex;
+  sem_t **semaforo;
 } slice;
 
 /* Allocate a GoL board of size = size^3 */
