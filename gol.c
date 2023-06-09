@@ -3,12 +3,17 @@
  *
  * RULES:
  *  1. A cell is born, if it has exactly three neighbours.
- *  2. A cell dies of loneliness, if it has less than two neighbours.
- *  3. A cell dies of overcrowding, if it has more than three neighbours.
- *  4. A cell survives to the next generation, if it does not die of lonelines or overcrowding.
+ *  2. A cell dies of loneliness,
+ *     if it has less than two neighbours.
+ *  3. A cell dies of overcrowding,
+ *     if it has more than three neighbours.
+ *  4. A cell survives to the next generation,
+ *     if it does not die of lonelines or overcrowding.
  *
- * In this version, a 2D array of ints is used.  A 1 cell is on, a 0 cell is off.
- * The game plays a number of steps (given by the input), printing to the screen each time.
+ * In this version, a 2D array of ints is used.
+ * A 1 cell is on, a 0 cell is off.
+ * The game plays a number of steps (given by the input),
+ * printing to the screen each time.
  * A 'x' printed means on, space means off.
  *
  */
@@ -58,60 +63,67 @@ void play(cell_t **board, cell_t **newboard,
     int i, j, a, b, beg = colunaI, end;
     int vet[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    stats->borns = 0;
-    stats->loneliness = 0;
-    stats->overcrowding = 0;
-    stats->survivals = 0;
-
     /* for each cell, apply the rules of Life */
     for (i = linhaI; i < linhaF; i++) {
         end = (i == (linhaF - 1))? colunaF : size;
         for (j = beg; j < end; j++) {
             a = adjacent_to(board, size, i, j);
-            b = board[i][j]*(a+2) - (board[i][j] - 1)*(a==3);
-            vet[b] = 1;
-            newboard[i][j] = vet[1] + vet[4] + vet[5];
-            stats->loneliness += vet[2] + vet[3];
-            stats->overcrowding += vet[6] + vet[7];
-            stats->overcrowding += vet[8] + vet[9] + vet[10];
-            stats->survivals += vet[4] + vet[5];
-            stats->borns += vet[1];
-            vet[b] = 0;
+            // se a célula estiver viva,
+            // os índices de 2 para cima
+            // são incrementados
+            b = board[i][j]*(a+2);
+            // caso contrário, o índice 1
+            // é incrementado se a == 3
+            // se não o índice 0)
+            // (que não será usado, 
+            // mas representa célula que
+            // continua morta
+            b -= (board[i][j] - 1)*(a==3);
+            vet[b] += 1;
+            newboard[i][j] = (b == 1) + (b == 4) + (b == 5);
         }
         beg = 0;
     }
+    stats->overcrowding = vet[6] + vet[7] + vet[8] + vet[9] + vet[10];
+    stats->loneliness = vet[2] + vet[3];
+    stats->survivals = vet[4] + vet[5];
+    stats->borns = vet[1];
 }
 
 void print_board(cell_t **board, int size) {
     int i, j;
     /* for each row */
     for (j = 0; j < size; j++) {
-        /* print each column position... */
+        // print each column position...
         for (i = 0; i < size; i++)
             printf("%c", board[i][j] ? 'x' : ' ');
-        /* followed by a carriage return */
+        // followed by a carriage return
         printf("\n");
     }
 }
 
 void print_stats(stats_t stats) {
-    /* print final statistics */
-    printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
-        stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
+    // print final statistics
+    printf("Statistics:\n\tBorns..............: "
+            "%u\n\tSurvivals..........: "
+            "%u\n\tLoneliness deaths..: "
+            "%u\n\tOvercrowding deaths: %u\n\n",
+            stats.borns, stats.survivals,
+            stats.loneliness, stats.overcrowding);
 }
 
 void read_file(FILE *f, cell_t **board, int size) {
     char *s = (char *) malloc(size + 10);
 
-    /* read the first new line (it will be ignored) */
+    // read the first new line (it will be ignored)
     fgets(s, size + 10, f);
 
     /* read the life board */
     for (int j = 0; j < size; j++) {
-        /* get a string */
+        // get a string
         fgets(s, size + 10, f);
 
-        /* copy the string to the life board */
+        // copy the string to the life board
         for (int i = 0; i < size; i++) {
             board[i][j] = (s[i] == 'x');
         }

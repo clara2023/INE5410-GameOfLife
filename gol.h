@@ -7,12 +7,17 @@
  *
  * RULES:
  *  1. A cell is born, if it has exactly three neighbours.
- *  2. A cell dies of loneliness, if it has less than two neighbours.
- *  3. A cell dies of overcrowding, if it has more than three neighbours.
- *  4. A cell survives to the next generation, if it does not die of lonelines or overcrowding.
+ *  2. A cell dies of loneliness,
+ *     if it has less than two neighbours.
+ *  3. A cell dies of overcrowding,
+ *     if it has more than three neighbours.
+ *  4. A cell survives to the next generation,
+ *     if it does not die of lonelines or overcrowding.
  *
- * In this version, a 2D array of ints is used.  A 1 cell is on, a 0 cell is off.
- * The game plays a number of steps (given by the input), printing to the screen each time.
+ * In this version, a 2D array of ints is used.
+ * A 1 cell is on, a 0 cell is off.
+ * The game plays a number of steps (given by the input),
+ * printing to the screen each time.
  * A 'x' printed means on, space means off.
  *
  */
