@@ -47,9 +47,6 @@ typedef struct {
   stats_t stats_total;
   cell_t** prev;
   cell_t** next;
-  // controle de concorrência
-  pthread_mutex_t *mutex;
-  sem_t **semaforo;
 } slice;
 
 /* Allocate a GoL board of size = size^3 */
