@@ -24,12 +24,10 @@ void* jogar(void *arg) {
     int colunaI = (param->colunas_por_thread)*(param->id);
     colunaI += param->resto_cel;
     int colunaF = colunaI + (param->colunas_por_thread);
-    // se as primeiras threads ainda não tiverem tomado
-    // as células que sobraram da divisão, subtrai-se a diferença
-    if (param->resto_cel && param->id < param->resto_cel) {
-        colunaI += (param->id - param->resto_cel);
-        colunaF += (param->id - param->resto_cel) + 1;
-    }
+    // se as primeiras threads ainda não tiverem tomado as
+    // células que sobraram da divisão, subtrai-se a diferença
+    colunaI += (param->id < param->resto_cel)? (param->id - param->resto_cel) : 0;
+    colunaF += (param->id < param->resto_cel)? (1 + param->id - param->resto_cel) : 0;
     int linhaI = (param->linhas_por_thread - 1)*(param->id); 
     int linhaF = linhaI + param->linhas_por_thread;
     // as colunas são acumuladas,
@@ -40,12 +38,10 @@ void* jogar(void *arg) {
     // isso antes das colunas serem moduladas
     colunaI %= param->size;
     colunaF %= param->size;
-    if (!colunaF) {
-        colunaF = param->size;
-        // se coluna é múltiplo exato de size,
-        // linhaF foi incrementado demais
-        linhaF--;
-    }
+    // se coluna é múltiplo exato de size,
+    // linhaF foi incrementado demais
+    linhaF -= (!colunaF)? 1 : 0;
+    colunaF = (!colunaF)? param->size : colunaF;
 
     cell_t** tmp;
 
@@ -128,9 +124,7 @@ int main(int argc, char **argv) {
                argv[1]);
         return 1;
     }
-    int Nthreads, size, steps;
-
-    Nthreads = atoi(argv[2]);
+    int size, steps;
 
     // recebe os parâmetros size e steps do arquivo input
     fscanf(f, "%d %d", &size, &steps);
@@ -147,30 +141,24 @@ int main(int argc, char **argv) {
       0,
       0,
       0,
-      0};
+      0
+    };
 
+    int Nthreads = atoi(argv[2]);
+
+    // mais threads que células
+    // é um desperdício, nesse
+    // caso, cada thread lida
+    // com uma célula
+    Nthreads = (Nthreads > size*size)? size*size : Nthreads;
+    
     // para dividir o tabuleiro
     // entre as threads
-    if (Nthreads > size*size) {
-        // mais threads que células
-        // é um desperdício, nesse
-        // caso, cada thread lida
-        // com uma célula
-        Nthreads = size*size;
-    }
-    int cel_por_thread = (size * size) / Nthreads;
     int resto_cel = (size * size) % Nthreads;
-    int linhas_por_thread = cel_por_thread / size;
-    int colunas_por_thread = cel_por_thread % size;
-    if (!colunas_por_thread) {
-        colunas_por_thread = size;
-    } else {
-        // sempre que as colunas não
-        // forem até o final,
-        // é necessário uma linha
-        // a mais
-        linhas_por_thread++;
-    }
+    int colunas_por_thread = ((size * size) / Nthreads) % size;
+    int linhas_por_thread = size / Nthreads;
+    linhas_por_thread += (!colunas_por_thread)? 0 : 1;
+    colunas_por_thread = (!colunas_por_thread)? size : colunas_por_thread;
 
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
