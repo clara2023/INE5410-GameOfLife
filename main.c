@@ -20,20 +20,30 @@ void* jogar(void *arg) {
     // cada thread inicializando
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
-
-    int colunaI = (param->colunas_por_thread)*(param->id) + param->resto_cel;
+    // resto_cel é quantas sobrara
+    int colunaI = (param->colunas_por_thread)*(param->id);
+    colunaI += param->resto_cel;
     int colunaF = colunaI + (param->colunas_por_thread);
+    // se as primeiras threads ainda não tiverem tomado
+    // as células que sobraram da divisão, subtrai-se a diferença
     if (param->resto_cel && param->id < param->resto_cel) {
         colunaI += (param->id - param->resto_cel);
         colunaF += (param->id - param->resto_cel) + 1;
     }
     int linhaI = (param->linhas_por_thread - 1)*(param->id); 
-    int linhaF = linhaI + param->linhas_por_thread + colunaF/(param->size);
+    int linhaF = linhaI + param->linhas_por_thread;
+    // as colunas são acumuladas,
+    // podendo ser bem maior que size,
+    // então as linhas devem ser ajustadas
     linhaI += colunaI/(param->size);
+    linhaF += colunaF/(param->size);
+    // isso antes das colunas serem moduladas
     colunaI %= param->size;
     colunaF %= param->size;
     if (!colunaF) {
         colunaF = param->size;
+        // se coluna é múltiplo exato de size,
+        // linhaF foi incrementado demais
         linhaF--;
     }
 
@@ -42,7 +52,9 @@ void* jogar(void *arg) {
     for (int step = 1; step <= param->steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
-        play(param->prev, param->next, param->size,
+        play(param->prev,
+             param->next,
+             param->size,
              linhaI, linhaF,
              colunaI, colunaF,
              &(param->stats_step));
@@ -65,6 +77,8 @@ void* jogar(void *arg) {
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
         FLAG_S--;
+        // em caso de debug, aproveita para
+        // incrementar stats_step
         #ifdef DEBUG
             stats_step.borns += param->stats_step.borns;
             stats_step.survivals += param->stats_step.survivals;
@@ -76,6 +90,7 @@ void* jogar(void *arg) {
             // a última thread a chegar
             // libera as outras
             FLAG_S = param->Nthreads;
+            // garante que só uma thread faça
             #ifdef DEBUG
                 printf("Step %d ----------\n", step);
                 print_board(param->prev, param->size);
@@ -150,6 +165,10 @@ int main(int argc, char **argv) {
     if (!colunas_por_thread) {
         colunas_por_thread = size;
     } else {
+        // sempre que as colunas não
+        // forem até o final,
+        // é necessário uma linha
+        // a mais
         linhas_por_thread++;
     }
 
@@ -163,7 +182,7 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
-
+        // dados para slicing
         param[i].size = size;
         param[i].steps = steps;
         param[i].Nthreads = Nthreads;
@@ -179,12 +198,10 @@ int main(int argc, char **argv) {
         param[i].prev = prev;
         param[i].next = next;
 
-
         pthread_create(&Th[i], NULL,
                        jogar,
                        (void *)&param[i]);
     }
-    //}
     // impedindo a thread main de continuar
     // até as trabalhadoras terminares
     for (int i = 0; i < Nthreads; ++i) {

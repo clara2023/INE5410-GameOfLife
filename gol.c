@@ -80,14 +80,19 @@ void play(cell_t **board, cell_t **newboard,
             // continua morta)
             b -= (board[i][j] - 1)*(a==3);
             vet[b]++;
+            // a célula está viva se:
             newboard[i][j] = (b == 1) + (b == 4) + (b == 5);
         }
         j = 0;
     }
+    // indices de 6 a 10 representam a > 3
     vet[6] += vet[7] + vet[8] + vet[9] + vet[10];
     stats->overcrowding = vet[6];
+    // indices 2 e 3 são a < 2 
     stats->loneliness = vet[2] + vet[3];
+    // indices 4 e 5 são a == 2 ou a == 3
     stats->survivals = vet[4] + vet[5];
+    // indice 1 é célula morta com a == 3
     stats->borns = vet[1];
 }
 
