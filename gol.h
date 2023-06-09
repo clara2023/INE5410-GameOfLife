@@ -31,14 +31,20 @@ typedef struct {
   // para evitar duplicação
   // e condições de corrida
   int id;
+  int size;
+  int Nthreads;
+  int steps;
+  int resto_cel;
+  int linhas_por_thread;
+  int colunas_por_thread;
   // paralelismo de fato
-  int beg;
-  int end;
-  // leitura dos tabuleiros
   stats_t stats_step;
   stats_t stats_total;
   cell_t** prev;
   cell_t** next;
+  // controle de concorrência
+  pthread_mutex_t *mutex;
+  sem_t **semaforo;
 } slice;
 
 /* Allocate a GoL board of size = size^3 */
@@ -50,9 +56,12 @@ void free_board(cell_t ** board, int size);
 /* Return the number of on cells adjacent to the i,j cell */
 int adjacent_to(cell_t ** board, int size, int i, int j);
 
-/* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
+/* Compute the next generation (newboard) based on
+the current generation (board) and returns its statistics */
 // alterada com os sices
-stats_t play(cell_t ** board, cell_t ** newboard, int size, int begin, int end);
+void play(cell_t **board, cell_t **newboard,
+             int size, int linhaI, int linhaF,
+             int colunaI, int colunaF, stats_t *stats);
 
 /* Print the GoL board */
 void print_board(cell_t ** board, int size);
