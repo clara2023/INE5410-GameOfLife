@@ -31,8 +31,7 @@ cell_t **allocate_board(int size) {
 }
 
 void free_board(cell_t **board, int size) {
-    int i;
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         free(board[i]);
     }
     free(board);
@@ -60,43 +59,45 @@ int adjacent_to(cell_t **board, int size, int i, int j) {
 void play(cell_t **board, cell_t **newboard,
              int size, int linhaI, int linhaF,
              int colunaI, int colunaF, stats_t *stats) {
-    int i, j, a, b, beg = colunaI, end;
+    int i = linhaI, j = colunaI, a, b, end;
     int vet[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     /* for each cell, apply the rules of Life */
-    for (i = linhaI; i < linhaF; i++) {
+    for (; i < linhaF; i++) {
         end = (i == (linhaF - 1))? colunaF : size;
-        for (j = beg; j < end; j++) {
+        for (; j < end; j++) {
             a = adjacent_to(board, size, i, j);
             // se a célula estiver viva,
             // os índices de 2 para cima
             // são incrementados
             b = board[i][j]*(a+2);
-            // caso contrário, o índice 1
-            // é incrementado se a == 3
-            // se não o índice 0)
+            // caso contrário, b é 0;
+            // o índice 1 deve ser
+            // incrementado se a == 3
+            // se não, será índice 0
             // (que não será usado, 
             // mas representa célula que
-            // continua morta
+            // continua morta)
             b -= (board[i][j] - 1)*(a==3);
-            vet[b] += 1;
+            vet[b]++;
             newboard[i][j] = (b == 1) + (b == 4) + (b == 5);
         }
-        beg = 0;
+        j = 0;
     }
-    stats->overcrowding = vet[6] + vet[7] + vet[8] + vet[9] + vet[10];
+    vet[6] += vet[7] + vet[8] + vet[9] + vet[10];
+    stats->overcrowding = vet[6];
     stats->loneliness = vet[2] + vet[3];
     stats->survivals = vet[4] + vet[5];
     stats->borns = vet[1];
 }
 
 void print_board(cell_t **board, int size) {
-    int i, j;
     /* for each row */
-    for (j = 0; j < size; j++) {
+    for (int j = 0; j < size; j++) {
         // print each column position...
-        for (i = 0; i < size; i++)
+        for (int i = 0; i < size; i++) {
             printf("%c", board[i][j] ? 'x' : ' ');
+        }
         // followed by a carriage return
         printf("\n");
     }
