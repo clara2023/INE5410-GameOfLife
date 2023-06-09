@@ -5,32 +5,47 @@
 #include <stdlib.h>
 #include "gol.h"
 
-// transformadas em variáveis globais
-// para permitir acesso pelas threads
-int size, steps, Nthreads;
-#ifdef DEBUG
-    stats_t stats_step = {0, 0, 0, 0};
-#endif
 // controle de concorrência
 int FLAG_S;
 pthread_mutex_t mutex0;
 sem_t *semaforo;
+#ifdef DEBUG
+    stats_t stats_step = {0,0,0,0};
+#endif
 
 // Função que as threads executam,
 // retirada da main
 void* jogar(void *arg) {
     slice *param = (slice *)arg;
-
     // cada thread inicializando
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
+
+    int colunaI = (param->colunas_por_thread)*(param->id) + param->resto_cel;
+    int colunaF = colunaI + (param->colunas_por_thread);
+    if (param->resto_cel && param->id < param->resto_cel) {
+        colunaI += (param->id - param->resto_cel);
+        colunaF += (param->id - param->resto_cel) + 1;
+    }
+    int linhaI = (param->linhas_por_thread - 1)*(param->id); 
+    int linhaF = linhaI + param->linhas_por_thread + colunaF/(param->size);
+    linhaI += colunaI/(param->size);
+    colunaI %= param->size;
+    colunaF %= param->size;
+    if (!colunaF) {
+        colunaF = param->size;
+        linhaF--;
+    }
+
     cell_t** tmp;
 
-    for (int i = 0; i < steps; i++) {
+    for (int step = 1; step <= param->steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
-        param->stats_step = play(param->prev, param->next,
-                                 size, param->beg, param->end);
+        play(param->prev, param->next, param->size,
+             linhaI, linhaF,
+             colunaI, colunaF,
+             &(param->stats_step));
         // cada thread também tem suas próprias
         // estatísticas totais e por step
         param->stats_total.borns += param->stats_step.borns;
@@ -45,44 +60,38 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
+        
+        // serve como um wait, para que as threads
+        // não prossigam para o próximo tabuleiro
+        // até que todas tenham terminado
+        FLAG_S--;
         #ifdef DEBUG
-            // -------caso se deseje ver o passo a passo,
-            // -------a variável stats_step receberá os
-            // -------valores de cada thread
             stats_step.borns += param->stats_step.borns;
             stats_step.survivals += param->stats_step.survivals;
             stats_step.loneliness += param->stats_step.loneliness;
             stats_step.overcrowding += param->stats_step.overcrowding;
         #endif
-        // serve como um wait, para que as threads
-        // não prossigam para o próximo tabuleiro
-        // até que todas tenham terminado
-        FLAG_S--;
 
         if (!FLAG_S) {
             // a última thread a chegar
             // libera as outras
-            FLAG_S = Nthreads;
-            for (int t = 0; t < Nthreads; t++) {
-                sem_post(&semaforo[t]);
-            }
-        }
-        pthread_mutex_unlock(&mutex0);
-        // trava todas as threads até a última
-        sem_wait(&(semaforo[param->id]));
-
-        #ifdef DEBUG
-            // só a thread 0
-            if (!param->id) {
-                printf("Step %d ----------\n", i + 1);
-                print_board(param->prev, size);
+            FLAG_S = param->Nthreads;
+            #ifdef DEBUG
+                printf("Step %d ----------\n", step);
+                print_board(param->prev, param->size);
                 print_stats(stats_step);
                 stats_step.borns = 0;
                 stats_step.survivals = 0;
                 stats_step.loneliness = 0;
                 stats_step.overcrowding = 0;
-                }
-        #endif
+            #endif
+            for (int i = 0; i < param->Nthreads; i++) {
+                sem_post(&semaforo[i]);
+            }
+        }
+        pthread_mutex_unlock(&mutex0);
+        // trava todas as threads até a última
+        sem_wait(&(semaforo[param->id]));
     }
     sem_destroy(&semaforo[param->id]);
     pthread_exit(NULL);
@@ -92,17 +101,19 @@ int main(int argc, char **argv) {
     
     if (argc != 3) {
                 printf("ERRO! Você deve digitar %s"
-                       " <nome do arquivo do tabuleiro> "
-                       "<Nthreads>!\n\n",
+                       " <nome do arquivo do tabuleiro>"
+                       " <Nthreads>!\n\n",
         argv[0]);
         return 1;
     }
     FILE *f;
     if ((f = fopen(argv[1], "r")) == NULL) {
-        printf("ERRO! O arquivo de tabuleiro '%s' não existe!\n\n",
+        printf("ERRO! O arquivo de tabuleiro '%s'"
+               " não existe!\n\n",
                argv[1]);
         return 1;
     }
+    int Nthreads, size, steps;
 
     Nthreads = atoi(argv[2]);
 
@@ -125,48 +136,41 @@ int main(int argc, char **argv) {
 
     // para dividir o tabuleiro
     // entre as threads
-    int aux = size / Nthreads;
-    if (Nthreads >= size) {
-        // mais threads que linhas
-        // é um desperdício
-        // nesse caso cada thread
-        // lida com uma coluna
-        Nthreads = size;
-        aux = 1;
-    } else if (size % Nthreads) {
-        // precisa arredondar
-        // para cima
-        aux++;
+    if (Nthreads > size*size) {
+        // mais threads que células
+        // é um desperdício, nesse
+        // caso, cada thread lida
+        // com uma célula
+        Nthreads = size*size;
     }
-    // elimina as threads desnecessárias
-    while (aux * (Nthreads - 1) >= size) {
-        Nthreads--;
+    int cel_por_thread = (size * size) / Nthreads;
+    int resto_cel = (size * size) % Nthreads;
+    int linhas_por_thread = cel_por_thread / size;
+    int colunas_por_thread = cel_por_thread % size;
+    if (!colunas_por_thread) {
+        colunas_por_thread = size;
+    } else {
+        linhas_por_thread++;
     }
 
     // controle de concorrência
     pthread_mutex_init(&mutex0, NULL);
     FLAG_S = Nthreads;
     semaforo = (sem_t*)malloc(sizeof(sem_t)*Nthreads);
-    // para evitar dupla inicialização
 
     pthread_t Th[Nthreads];
     slice param[Nthreads];
-#ifdef DEBUG
-    printf("Initial:\n");
-    print_board(prev, size);
-    print_stats(stats_step);
-#endif
-     
+
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
 
-        // divisão dos slices
-        param[i].beg = aux*i;
-        if (aux*(i+1) > size) {
-            param[i].end = size;
-        } else {
-            param[i].end = aux * (i + 1);
-        }
+        param[i].size = size;
+        param[i].steps = steps;
+        param[i].Nthreads = Nthreads;
+        param[i].resto_cel = resto_cel;
+        param[i].linhas_por_thread = linhas_por_thread;
+        param[i].colunas_por_thread = colunas_por_thread;
+        
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;
         param[i].stats_total = stats_total;
@@ -175,10 +179,12 @@ int main(int argc, char **argv) {
         param[i].prev = prev;
         param[i].next = next;
 
+
         pthread_create(&Th[i], NULL,
                        jogar,
                        (void *)&param[i]);
     }
+    //}
     // impedindo a thread main de continuar
     // até as trabalhadoras terminares
     for (int i = 0; i < Nthreads; ++i) {
@@ -190,10 +196,8 @@ int main(int argc, char **argv) {
         stats_total.survivals += param[i].stats_total.survivals;
     }
     pthread_mutex_destroy(&mutex0);
-    // usa outro for para garantir que
-    // não interfira com a execução
     free(semaforo);
-    
+
 #ifdef RESULT
     printf("Final:\n");
     print_board(prev, size);
