@@ -5,16 +5,13 @@
 #include <stdlib.h>
 #include "gol.h"
 
-// transformadas em variáveis globais
-// para permitir acesso pelas threads
-int size, steps, Nthreads;
-int resto_cel,
-    linhas_por_thread,
-    colunas_por_thread;
 // controle de concorrência
 int FLAG_S;
 pthread_mutex_t mutex0;
 sem_t *semaforo;
+#ifdef DEBUG
+    stats_t stats_step = {0,0,0,0};
+#endif
 
 // Função que as threads executam,
 // retirada da main
@@ -23,32 +20,41 @@ void* jogar(void *arg) {
     // cada thread inicializando
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
-
-    int colunaI = colunas_por_thread*(param->id);
-    int colunaF = colunaI + colunas_por_thread;
-    if (resto_cel && param->id < resto_cel) {
-        colunaI += param->id;
-        colunaF += param->id + 1;
-    } else {
-        colunaI += resto_cel;
-        colunaF += resto_cel;
+    // resto_cel é quantas sobrara
+    int colunaI = (param->colunas_por_thread)*(param->id);
+    colunaI += param->resto_cel;
+    int colunaF = colunaI + (param->colunas_por_thread);
+    // se as primeiras threads ainda não tiverem tomado
+    // as células que sobraram da divisão, subtrai-se a diferença
+    if (param->resto_cel && param->id < param->resto_cel) {
+        colunaI += (param->id - param->resto_cel);
+        colunaF += (param->id - param->resto_cel) + 1;
     }
-    int linhaI = (linhas_por_thread - 1)*(param->id); 
-    int linhaF = linhaI + linhas_por_thread + colunaF/size;
-    linhaI += colunaI/size;
-    colunaI %= size;
-    colunaF %= size;
+    int linhaI = (param->linhas_por_thread - 1)*(param->id); 
+    int linhaF = linhaI + param->linhas_por_thread;
+    // as colunas são acumuladas,
+    // podendo ser bem maior que size,
+    // então as linhas devem ser ajustadas
+    linhaI += colunaI/(param->size);
+    linhaF += colunaF/(param->size);
+    // isso antes das colunas serem moduladas
+    colunaI %= param->size;
+    colunaF %= param->size;
     if (!colunaF) {
-        colunaF = size;
+        colunaF = param->size;
+        // se coluna é múltiplo exato de size,
+        // linhaF foi incrementado demais
         linhaF--;
     }
 
     cell_t** tmp;
 
-    for (int step = 1; step <= steps; step++) {
+    for (int step = 1; step <= param->steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
         // recebendo as próprias estatísticas
-        play(param->prev, param->next, size,
+        play(param->prev,
+             param->next,
+             param->size,
              linhaI, linhaF,
              colunaI, colunaF,
              &(param->stats_step));
@@ -71,12 +77,30 @@ void* jogar(void *arg) {
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
         FLAG_S--;
+        // em caso de debug, aproveita para
+        // incrementar stats_step
+        #ifdef DEBUG
+            stats_step.borns += param->stats_step.borns;
+            stats_step.survivals += param->stats_step.survivals;
+            stats_step.loneliness += param->stats_step.loneliness;
+            stats_step.overcrowding += param->stats_step.overcrowding;
+        #endif
 
         if (!FLAG_S) {
             // a última thread a chegar
             // libera as outras
-            FLAG_S = Nthreads;
-            for (int i = 0; i < Nthreads; i++) {
+            FLAG_S = param->Nthreads;
+            // garante que só uma thread faça
+            #ifdef DEBUG
+                printf("Step %d ----------\n", step);
+                print_board(param->prev, param->size);
+                print_stats(stats_step);
+                stats_step.borns = 0;
+                stats_step.survivals = 0;
+                stats_step.loneliness = 0;
+                stats_step.overcrowding = 0;
+            #endif
+            for (int i = 0; i < param->Nthreads; i++) {
                 sem_post(&semaforo[i]);
             }
         }
@@ -104,6 +128,7 @@ int main(int argc, char **argv) {
                argv[1]);
         return 1;
     }
+    int Nthreads, size, steps;
 
     Nthreads = atoi(argv[2]);
 
@@ -134,12 +159,16 @@ int main(int argc, char **argv) {
         Nthreads = size*size;
     }
     int cel_por_thread = (size * size) / Nthreads;
-    resto_cel = (size * size) % Nthreads;
-    linhas_por_thread = (cel_por_thread / size);
-    colunas_por_thread = cel_por_thread % size;
+    int resto_cel = (size * size) % Nthreads;
+    int linhas_por_thread = cel_por_thread / size;
+    int colunas_por_thread = cel_por_thread % size;
     if (!colunas_por_thread) {
         colunas_por_thread = size;
     } else {
+        // sempre que as colunas não
+        // forem até o final,
+        // é necessário uma linha
+        // a mais
         linhas_por_thread++;
     }
 
@@ -153,6 +182,13 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < Nthreads; ++i) {
         param[i].id = i;
+        // dados para slicing
+        param[i].size = size;
+        param[i].steps = steps;
+        param[i].Nthreads = Nthreads;
+        param[i].resto_cel = resto_cel;
+        param[i].linhas_por_thread = linhas_por_thread;
+        param[i].colunas_por_thread = colunas_por_thread;
         
         // recebendo estatísticas zeradas
         param[i].stats_step = stats_total;
@@ -162,12 +198,10 @@ int main(int argc, char **argv) {
         param[i].prev = prev;
         param[i].next = next;
 
-
         pthread_create(&Th[i], NULL,
                        jogar,
                        (void *)&param[i]);
     }
-    //}
     // impedindo a thread main de continuar
     // até as trabalhadoras terminares
     for (int i = 0; i < Nthreads; ++i) {
@@ -180,7 +214,7 @@ int main(int argc, char **argv) {
     }
     pthread_mutex_destroy(&mutex0);
     free(semaforo);
-    
+
 #ifdef RESULT
     printf("Final:\n");
     print_board(prev, size);
