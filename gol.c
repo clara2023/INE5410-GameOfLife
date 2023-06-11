@@ -62,7 +62,7 @@ void play(cell_t **board, cell_t **newboard,
     int i = linhaI, j = colunaI, a, b, end;
     int vet[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    /* for each cell, apply the rules of Life */
+    // for each cell, apply the rules of Life
     for (; i < linhaF; i++) {
         end = (i == (linhaF - 1))? colunaF : size;
         for (; j < end; j++) {
@@ -97,7 +97,7 @@ void play(cell_t **board, cell_t **newboard,
 }
 
 void print_board(cell_t **board, int size) {
-    /* for each row */
+    // for each row
     for (int j = 0; j < size; j++) {
         // print each column position...
         for (int i = 0; i < size; i++) {
@@ -124,7 +124,7 @@ void read_file(FILE *f, cell_t **board, int size) {
     // read the first new line (it will be ignored)
     fgets(s, size + 10, f);
 
-    /* read the life board */
+    // read the life board 
     for (int j = 0; j < size; j++) {
         // get a string
         fgets(s, size + 10, f);
