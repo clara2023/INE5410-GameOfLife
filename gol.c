@@ -61,27 +61,29 @@ void play(cell_t **board, cell_t **newboard,
              int colunaI, int colunaF, stats_t *stats) {
     int i = linhaI, j = colunaI, a, b, end;
     int vet[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int fim[2] = {size, colunaF};
 
     // for each cell, apply the rules of Life
     for (; i < linhaF; i++) {
-        end = (i == (linhaF - 1))? colunaF : size;
+        end = fim[(i == (linhaF - 1))];
         for (; j < end; j++) {
             a = adjacent_to(board, size, i, j);
             // se a célula estiver viva,
             // os índices de 2 para cima
-            // são incrementados
-            b = board[i][j]*(a+2);
+            // são incrementados,
             // caso contrário, b é 0;
+            b = board[i][j]*(a+2);
+            // nesse caso
             // o índice 1 deve ser
             // incrementado se a == 3
-            // se não, será índice 0
-            // (que não será usado, 
-            // mas representa célula que
-            // continua morta)
-            b -= (board[i][j] - 1)*(a==3);
+            // se não, será o índice
+            // 0 (que não será usado, 
+            // mas representa célula
+            // que continua morta)
+            b += (!board[i][j])*(a==3);
             vet[b]++;
             // a célula está viva se:
-            newboard[i][j] = (b == 1) + (b == 4) + (b == 5);
+            newboard[i][j] = (b == 1) || (b == 4) || (b == 5);
         }
         j = 0;
     }
