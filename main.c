@@ -20,14 +20,16 @@ void* jogar(void *arg) {
     // cada thread inicializando
     // o próprio semáforo
     sem_init(&semaforo[param->id], 0, 0);
-    // resto_cel é quantas sobrara
+
     int colunaI = (param->colunas_por_thread)*(param->id);
-    colunaI += param->resto_cel;
-    int colunaF = colunaI + (param->colunas_por_thread);
-    // se as primeiras threads ainda não tiverem tomado as
-    // células que sobraram da divisão, subtrai-se a diferença
-    colunaI += (param->id < param->resto_cel)? (param->id - param->resto_cel) : 0;
-    colunaF += (param->id < param->resto_cel)? (1 + param->id - param->resto_cel) : 0;
+    int colunaF = (param->colunas_por_thread)*(param->id + 1);
+    // para evitar ifs
+    int condicional[2] = {param->resto_cel, param->id};
+    int cond = param->id < param->resto_cel;
+    // se ainda houver células de resto_cel sobrando,
+    // a thread vai pegar só as correspondentes, se não, todas
+    colunaI += condicional[cond];
+    colunaI += condicional[cond] + cond;
     int linhaI = (param->linhas_por_thread - 1)*(param->id); 
     int linhaF = linhaI + param->linhas_por_thread;
     // as colunas são acumuladas,
@@ -39,15 +41,19 @@ void* jogar(void *arg) {
     colunaI %= param->size;
     colunaF %= param->size;
     // se coluna é múltiplo exato de size,
-    // linhaF foi incrementado demais
-    linhaF -= (!colunaF)? 1 : 0;
-    colunaF = (!colunaF)? param->size : colunaF;
+    // linhaF foi incrementado demais,
+    // pois a thread já irá até o final
+    linhaF -= !colunaF;
+    // a linha não termina em 0
+    condicional[0] = colunaF;
+    condicional[1] = param->size;
+    colunaF = condicional[!colunaF];
 
     cell_t** tmp;
 
     for (int step = 1; step <= param->steps; step++) {
         // cada thread lidará com um slice do tabuleiro,
-        // recebendo as próprias estatísticas
+        // enviando as próprias estatísticas por step
         play(param->prev,
              param->next,
              param->size,
@@ -61,6 +67,7 @@ void* jogar(void *arg) {
         param->stats_total.loneliness += param->stats_step.loneliness;
         param->stats_total.overcrowding += param->stats_step.overcrowding;
 
+        // troca de quadros
         tmp = param->next;
         param->next = param->prev;
         param->prev = tmp;
@@ -68,7 +75,6 @@ void* jogar(void *arg) {
         // alterando variáveis globais
         // em uma região de exclusão mútua
         pthread_mutex_lock(&mutex0);
-        
         // serve como um wait, para que as threads
         // não prossigam para o próximo tabuleiro
         // até que todas tenham terminado
@@ -104,6 +110,7 @@ void* jogar(void *arg) {
         // trava todas as threads até a última
         sem_wait(&(semaforo[param->id]));
     }
+    // destruindo o próprio semáforo
     sem_destroy(&semaforo[param->id]);
     pthread_exit(NULL);
 }
@@ -126,7 +133,8 @@ int main(int argc, char **argv) {
     }
     int size, steps;
 
-    // recebe os parâmetros size e steps do arquivo input
+    // recebe os parâmetros size
+    // e steps do arquivo input
     fscanf(f, "%d %d", &size, &steps);
 
     // aloca só uma vez
@@ -137,12 +145,7 @@ int main(int argc, char **argv) {
 
     next = allocate_board(size);
     // variável para o resultado final
-    stats_t stats_total = {
-      0,
-      0,
-      0,
-      0
-    };
+    stats_t stats_total = {0,0,0,0};
 
     int Nthreads = atoi(argv[2]);
 
@@ -157,7 +160,10 @@ int main(int argc, char **argv) {
     int resto_cel = (size * size) % Nthreads;
     int colunas_por_thread = ((size * size) / Nthreads) % size;
     int linhas_por_thread = size / Nthreads;
-    linhas_por_thread += (!colunas_por_thread)? 0 : 1;
+    // se colunas por threads for diferente de 0,
+    // precisará cobrir mais linhas, para abarcar
+    // as colunas que faltam
+    linhas_por_thread += !(!colunas_por_thread);
     colunas_por_thread = (!colunas_por_thread)? size : colunas_por_thread;
 
     // controle de concorrência
@@ -194,7 +200,7 @@ int main(int argc, char **argv) {
     // até as trabalhadoras terminares
     for (int i = 0; i < Nthreads; ++i) {
         pthread_join(Th[i], NULL);
-        // acumulando os resultados na variável
+        // acumulando os resultados na variável global
         stats_total.borns += param[i].stats_total.borns;
         stats_total.loneliness += param[i].stats_total.loneliness;
         stats_total.overcrowding += param[i].stats_total.overcrowding;
