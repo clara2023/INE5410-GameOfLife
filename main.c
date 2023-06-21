@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "gol.h"
 
 // controle de concorrência
@@ -148,6 +149,16 @@ int main(int argc, char **argv) {
     stats_t stats_total = {0,0,0,0};
 
     int Nthreads = atoi(argv[2]);
+    
+    //variável do tipo time_t para armazenar o tempo em segundos
+    time_t segundos_ini;
+    time_t segundos_fin;
+    
+    //obtendo o tempo em segundos  
+    time(&segundos_ini);
+    const long int segundos_inicial = segundos_ini;
+    printf("fim = %ld\n", segundos_inicial);
+
 
     // mais threads que células
     // é um desperdício, nesse
@@ -206,6 +217,16 @@ int main(int argc, char **argv) {
         stats_total.overcrowding += param[i].stats_total.overcrowding;
         stats_total.survivals += param[i].stats_total.survivals;
     }
+    
+    //obtendo o tempo em segundos  
+    time(&segundos_fin);
+    const long int segundos_final = segundos_fin;
+    printf("fim = %ld\n", segundos_final);
+
+    long int tempo = segundos_final - segundos_inicial;
+
+    printf("tempo = %ld\n", tempo);
+
     pthread_mutex_destroy(&mutex0);
     free(semaforo);
 
