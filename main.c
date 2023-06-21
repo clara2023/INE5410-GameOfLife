@@ -149,7 +149,10 @@ int main(int argc, char **argv) {
     stats_t stats_total = {0,0,0,0};
 
     int Nthreads = atoi(argv[2]);
-    
+    if (Nthreads < 0) {
+        printf("Número Inválido de Threads!!!\n");
+        return 1;
+    }
     //variável do tipo time_t para armazenar o tempo em segundos
     time_t segundos_ini;
     time_t segundos_fin;
